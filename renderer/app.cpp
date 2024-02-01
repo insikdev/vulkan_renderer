@@ -16,17 +16,19 @@ App::App(uint32_t width, uint32_t height)
     if (m_window == nullptr) {
         throw std::exception("Failed to create window.");
     }
+
+    p_instance = new VK::Instance {};
 }
 
 App::~App()
 {
+    delete p_instance;
     glfwDestroyWindow(m_window);
     glfwTerminate();
 }
 
 void App::Run(void)
 {
-
     while (glfwWindowShouldClose(m_window) != GL_TRUE) {
         glfwPollEvents();
     }

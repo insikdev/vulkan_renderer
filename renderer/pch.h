@@ -7,3 +7,6 @@
 // library
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+// core
+#include <vk_core.h>
