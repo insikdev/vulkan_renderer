@@ -3,13 +3,23 @@
 
 VK::Instance::Instance()
 {
+    CreateInstance();
+}
+
+VK::Instance::~Instance()
+{
+    vkDestroyInstance(m_instance, nullptr);
+}
+
+void VK::Instance::CreateInstance(void)
+{
     VkApplicationInfo applicationInfo {
         .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },
         .pNext { nullptr },
         .pApplicationName { nullptr },
-        .applicationVersion {},
+        .applicationVersion { VK_MAKE_VERSION(0, 0, 1) },
         .pEngineName { nullptr },
-        .engineVersion {},
+        .engineVersion { VK_MAKE_VERSION(0, 0, 1) },
         .apiVersion { VK_API_VERSION_1_0 }
     };
 
@@ -24,10 +34,5 @@ VK::Instance::Instance()
         .ppEnabledExtensionNames {}
     };
 
-    CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance));
-}
-
-VK::Instance::~Instance()
-{
-    vkDestroyInstance(m_instance, nullptr);
+    CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance), "Failed to create instance.");
 }

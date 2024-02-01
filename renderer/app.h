@@ -15,4 +15,5 @@ private:
 
 private:
     VK::Instance* p_instance;
+    VK::Device* p_device;
 };

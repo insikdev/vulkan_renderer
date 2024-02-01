@@ -10,6 +10,7 @@ App::App(uint32_t width, uint32_t height)
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     m_window = glfwCreateWindow(m_width, m_height, "Vulkan", nullptr, nullptr);
 
@@ -18,10 +19,12 @@ App::App(uint32_t width, uint32_t height)
     }
 
     p_instance = new VK::Instance {};
+    p_device = new VK::Device { p_instance };
 }
 
 App::~App()
 {
+    delete p_device;
     delete p_instance;
     glfwDestroyWindow(m_window);
     glfwTerminate();
