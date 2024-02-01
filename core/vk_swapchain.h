@@ -2,7 +2,6 @@
 
 namespace VK {
 class Device;
-class WinSurface;
 
 class Swapchain {
 public:
@@ -22,7 +21,7 @@ private:
     VkSurfaceFormatKHR m_format;
     VkPresentModeKHR m_presentMode;
     VkSwapchainKHR m_swapchain;
-    std::vector<VkImage> m_swapChainImages;
+    std::vector<VkImage> m_images;
     std::vector<VkImageView> m_imageViews;
 };
 }

@@ -1,18 +1,74 @@
 #include "pch.h"
 #include "query.h"
 
+std::vector<VkExtensionProperties> Query::GetInstanceExtensions(void)
+{
+    uint32_t extensionCount {};
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+
+    if (extensionCount != 0) {
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+    }
+
+    return availableExtensions;
+}
+
+std::vector<VkLayerProperties> Query::GetInstanceLayers(void)
+{
+    uint32_t layerCount {};
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+
+    if (layerCount != 0) {
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    }
+
+    return availableLayers;
+}
+
 std::vector<VkPhysicalDevice> Query::GetPhysicalDevices(VkInstance instance)
 {
     uint32_t deviceCount {};
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
-    std::vector<VkPhysicalDevice> devices(deviceCount);
+    std::vector<VkPhysicalDevice> availablePhysicalDevices(deviceCount);
 
     if (deviceCount != 0) {
-        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        vkEnumeratePhysicalDevices(instance, &deviceCount, availablePhysicalDevices.data());
     }
 
-    return devices;
+    return availablePhysicalDevices;
+}
+
+std::vector<VkExtensionProperties> Query::GetDeviceExtensions(VkPhysicalDevice physicalDevice)
+{
+    uint32_t extensionCount {};
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+
+    if (extensionCount != 0) {
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
+    }
+
+    return availableExtensions;
+}
+
+std::vector<VkQueueFamilyProperties> Query::GetQueueFamilies(VkPhysicalDevice physicalDevice)
+{
+    uint32_t queueFamilyCount {};
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> availableQueueFamilies(queueFamilyCount);
+
+    if (queueFamilyCount != 0) {
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, availableQueueFamilies.data());
+    }
+
+    return availableQueueFamilies;
 }
 
 std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
@@ -20,13 +76,13 @@ std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(VkPhysicalDevice physic
     uint32_t formatCount {};
     vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
 
-    std::vector<VkSurfaceFormatKHR> formats(formatCount);
+    std::vector<VkSurfaceFormatKHR> availableFormats(formatCount);
 
     if (formatCount != 0) {
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, formats.data());
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, availableFormats.data());
     }
 
-    return formats;
+    return availableFormats;
 }
 
 std::vector<VkPresentModeKHR> Query::GetPresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
@@ -34,11 +90,11 @@ std::vector<VkPresentModeKHR> Query::GetPresentModes(VkPhysicalDevice physicalDe
     uint32_t presentModeCount {};
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
 
-    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    std::vector<VkPresentModeKHR> availablePresentModes(presentModeCount);
 
     if (presentModeCount != 0) {
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, availablePresentModes.data());
     }
 
-    return presentModes;
+    return availablePresentModes;
 }

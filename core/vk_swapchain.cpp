@@ -8,9 +8,9 @@ VK::Swapchain::Swapchain(const Device* pDevice, VkSurfaceKHR surface)
     , m_surface { surface }
 {
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device->GetPhysicalDeviceHandle(), surface, &m_capabilities);
+
     m_format = SelectFormat();
     m_presentMode = SelectPresentMode();
-
     CreateSwapchain();
     CreateImageViews();
 }
@@ -26,30 +26,30 @@ VK::Swapchain::~Swapchain()
 
 VkSurfaceFormatKHR VK::Swapchain::SelectFormat(void)
 {
-    std::vector<VkSurfaceFormatKHR> formats = Query::GetSurfaceFormats(p_device->GetPhysicalDeviceHandle(), m_surface);
+    const auto& availableFormats = Query::GetSurfaceFormats(p_device->GetPhysicalDeviceHandle(), m_surface);
 
-    if (formats.empty()) {
-        throw std::runtime_error("");
+    if (availableFormats.empty()) {
+        throw std::runtime_error("Failed to create swap chain.");
     }
 
-    for (const auto& availableFormat : formats) {
+    for (const auto& availableFormat : availableFormats) {
         if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             return availableFormat;
         }
     }
 
-    return formats[0];
+    return availableFormats[0];
 }
 
 VkPresentModeKHR VK::Swapchain::SelectPresentMode(void)
 {
-    std::vector<VkPresentModeKHR> presentModes = Query::GetPresentModes(p_device->GetPhysicalDeviceHandle(), m_surface);
+    std::vector<VkPresentModeKHR> availablePresentModes = Query::GetPresentModes(p_device->GetPhysicalDeviceHandle(), m_surface);
 
-    if (presentModes.empty()) {
-        throw std::runtime_error("");
+    if (availablePresentModes.empty()) {
+        throw std::runtime_error("Failed to create swap chain.");
     }
 
-    for (const auto& availablePresentMode : presentModes) {
+    for (const auto& availablePresentMode : availablePresentModes) {
         if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
             return availablePresentMode;
         }
@@ -66,7 +66,11 @@ void VK::Swapchain::CreateSwapchain(void)
         imageCount = m_capabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR swapchainCreateInfoKHR {
+    if (m_capabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)()) {
+        throw std::runtime_error("Failed to create swap chain.");
+    }
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo {
         .sType { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR },
         .pNext { nullptr },
         .flags {},
@@ -87,18 +91,26 @@ void VK::Swapchain::CreateSwapchain(void)
         .oldSwapchain { VK_NULL_HANDLE }
     };
 
-    CHECK_VK(vkCreateSwapchainKHR(p_device->GetHandle(), &swapchainCreateInfoKHR, nullptr, &m_swapchain), "Failed to create swap chain.");
+    if (p_device->GetGraphicQueueFamilyIndex() != p_device->GetPresentQueueFamilyIndex()) {
+        uint32_t queueFamilyIndices[] = { p_device->GetGraphicQueueFamilyIndex(), p_device->GetPresentQueueFamilyIndex() };
+
+        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapchainCreateInfo.queueFamilyIndexCount = 2;
+        swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+    }
+
+    CHECK_VK(vkCreateSwapchainKHR(p_device->GetHandle(), &swapchainCreateInfo, nullptr, &m_swapchain), "Failed to create swap chain.");
 
     vkGetSwapchainImagesKHR(p_device->GetHandle(), m_swapchain, &imageCount, nullptr);
-    m_swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_swapchain, &imageCount, m_swapChainImages.data());
+    m_images.resize(imageCount);
+    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_swapchain, &imageCount, m_images.data());
 }
 
 void VK::Swapchain::CreateImageViews(void)
 {
-    m_imageViews.resize(m_swapChainImages.size());
+    m_imageViews.resize(m_images.size());
 
-    for (size_t i = 0; i < m_swapChainImages.size(); i++) {
+    for (size_t i = 0; i < m_images.size(); i++) {
         VkComponentMapping components {
             .r { VK_COMPONENT_SWIZZLE_IDENTITY },
             .g { VK_COMPONENT_SWIZZLE_IDENTITY },
@@ -118,7 +130,7 @@ void VK::Swapchain::CreateImageViews(void)
             .sType { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO },
             .pNext {},
             .flags {},
-            .image { m_swapChainImages[i] },
+            .image { m_images[i] },
             .viewType { VK_IMAGE_VIEW_TYPE_2D },
             .format { m_format.format },
             .components { components },

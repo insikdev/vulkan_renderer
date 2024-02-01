@@ -22,20 +22,17 @@ App::App(uint32_t width, uint32_t height)
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> instanceLayers {};
+    std::vector<const char*> instanceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    HINSTANCE hinstance = GetModuleHandle(nullptr);
+    HWND hwnd = glfwGetWin32Window(m_window);
 
-    p_instance = new VK::Instance { {}, extensions };
-    p_device = new VK::Device { p_instance, { VK_KHR_SWAPCHAIN_EXTENSION_NAME } };
-    p_surface = new VK::WinSurface { p_instance, GetModuleHandle(nullptr), glfwGetWin32Window(m_window) };
-    p_swapChain = new VK::Swapchain { p_device, p_surface->GetHandle() };
+    p_wsi = VK::WSI::CreateWin32(instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd);
 }
 
 App::~App()
 {
-    delete p_swapChain;
-    delete p_surface;
-    delete p_device;
-    delete p_instance;
     glfwDestroyWindow(m_window);
     glfwTerminate();
 }

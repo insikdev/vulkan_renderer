@@ -2,8 +2,9 @@
 
 // C++
 #include <cstdint>
-#include <exception>
+#include <stdexcept>
 #include <vector>
+#include <memory>
 
 // library
 #define VK_USE_PLATFORM_WIN32_KHR

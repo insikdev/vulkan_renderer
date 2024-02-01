@@ -14,8 +14,5 @@ private:
     GLFWwindow* m_window;
 
 private:
-    VK::Instance* p_instance;
-    VK::Device* p_device;
-    VK::WinSurface* p_surface;
-    VK::Swapchain* p_swapChain;
+    std::unique_ptr<VK::WSI> p_wsi;
 };

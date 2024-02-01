@@ -6,15 +6,17 @@
     <ClInclude Include="vk_core.h" />
     <ClInclude Include="vk_device.h" />
     <ClInclude Include="query.h" />
-    <ClInclude Include="vk_window_surface.h" />
     <ClInclude Include="vk_swapchain.h" />
+    <ClInclude Include="vk_wsi.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="vk_instance.cpp" />
     <ClCompile Include="vk_device.cpp" />
     <ClCompile Include="query.cpp" />
-    <ClCompile Include="vk_window_surface.cpp" />
     <ClCompile Include="vk_swapchain.cpp" />
+    <ClCompile Include="vk_wsi.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
 </Project>

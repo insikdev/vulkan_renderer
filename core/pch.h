@@ -1,12 +1,15 @@
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
-
 #include <stdexcept>
 #include <iostream>
 #include <vector>
+#include <memory>
+#include <set>
+#include <limits>
+#include <cstdint>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 

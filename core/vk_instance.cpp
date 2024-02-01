@@ -1,9 +1,19 @@
 #include "pch.h"
 #include "vk_instance.h"
+#include "query.h"
+#include "utils.h"
 
-VK::Instance::Instance(const std::vector<const char*>& layers, const std::vector<const char*>& extensions)
+VK::Instance::Instance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
 {
-    CreateInstance(layers, extensions);
+    if (Utils::CheckLayerSupport(requiredLayers, Query::GetInstanceLayers()) == false) {
+        throw std::runtime_error("Required layers are not supported.");
+    }
+
+    if (Utils::CheckExtensionSupport(requiredExtensions, Query::GetInstanceExtensions()) == false) {
+        throw std::runtime_error("Required extensions are not supported.");
+    }
+
+    CreateInstance(requiredLayers, requiredExtensions);
 }
 
 VK::Instance::~Instance()
@@ -11,7 +21,7 @@ VK::Instance::~Instance()
     vkDestroyInstance(m_instance, nullptr);
 }
 
-void VK::Instance::CreateInstance(const std::vector<const char*>& layers, const std::vector<const char*>& extensions)
+void VK::Instance::CreateInstance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
 {
     VkApplicationInfo applicationInfo {
         .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },
@@ -28,10 +38,10 @@ void VK::Instance::CreateInstance(const std::vector<const char*>& layers, const 
         .pNext { nullptr },
         .flags {},
         .pApplicationInfo { &applicationInfo },
-        .enabledLayerCount { static_cast<uint32_t>(layers.size()) },
-        .ppEnabledLayerNames { layers.data() },
-        .enabledExtensionCount { static_cast<uint32_t>(extensions.size()) },
-        .ppEnabledExtensionNames { extensions.data() }
+        .enabledLayerCount { static_cast<uint32_t>(requiredLayers.size()) },
+        .ppEnabledLayerNames { requiredLayers.data() },
+        .enabledExtensionCount { static_cast<uint32_t>(requiredExtensions.size()) },
+        .ppEnabledExtensionNames { requiredExtensions.data() }
     };
 
     CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance), "Failed to create instance.");

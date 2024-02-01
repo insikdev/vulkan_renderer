@@ -9,4 +9,18 @@
     <ClInclude Include="app.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{6da7a6a7-0f88-4125-8aaf-8c725ec45ad3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shaders\simple.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders\simple.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\compile.bat" />
+  </ItemGroup>
 </Project>
