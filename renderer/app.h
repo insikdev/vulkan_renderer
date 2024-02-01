@@ -16,4 +16,6 @@ private:
 private:
     VK::Instance* p_instance;
     VK::Device* p_device;
+    VK::WinSurface* p_surface;
+    VK::Swapchain* p_swapChain;
 };

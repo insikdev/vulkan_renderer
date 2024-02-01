@@ -3,11 +3,11 @@
 #include "vk_instance.h"
 #include "query.h"
 
-VK::Device::Device(const Instance* pInstance)
+VK::Device::Device(const Instance* pInstance, const std::vector<const char*>& extensions)
     : p_instance { pInstance }
 {
     m_physicalDevice = SelectPhysicalDevice();
-    CreateLogicalDevice();
+    CreateLogicalDevice(extensions);
 }
 
 VK::Device::~Device()
@@ -39,7 +39,7 @@ VkPhysicalDevice VK::Device::SelectPhysicalDevice()
     throw std::runtime_error("Failed to select physical device.");
 }
 
-void VK::Device::CreateLogicalDevice()
+void VK::Device::CreateLogicalDevice(const std::vector<const char*>& extensions)
 {
     float queuePriority = 1.0f;
 
@@ -60,10 +60,10 @@ void VK::Device::CreateLogicalDevice()
         .flags {},
         .queueCreateInfoCount { 1 },
         .pQueueCreateInfos { &deviceQueueCreateInfo },
-        .enabledLayerCount {},
-        .ppEnabledLayerNames {},
-        .enabledExtensionCount {},
-        .ppEnabledExtensionNames {},
+        .enabledLayerCount { /* deprecated and ignored */ },
+        .ppEnabledLayerNames { /* deprecated and ignored */ },
+        .enabledExtensionCount { static_cast<uint32_t>(extensions.size()) },
+        .ppEnabledExtensionNames { extensions.data() },
         .pEnabledFeatures { &deviceFeatures }
     };
 

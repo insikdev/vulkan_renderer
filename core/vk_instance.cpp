@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "vk_instance.h"
 
-VK::Instance::Instance()
+VK::Instance::Instance(const std::vector<const char*>& layers, const std::vector<const char*>& extensions)
 {
-    CreateInstance();
+    CreateInstance(layers, extensions);
 }
 
 VK::Instance::~Instance()
@@ -11,7 +11,7 @@ VK::Instance::~Instance()
     vkDestroyInstance(m_instance, nullptr);
 }
 
-void VK::Instance::CreateInstance(void)
+void VK::Instance::CreateInstance(const std::vector<const char*>& layers, const std::vector<const char*>& extensions)
 {
     VkApplicationInfo applicationInfo {
         .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },
@@ -28,10 +28,10 @@ void VK::Instance::CreateInstance(void)
         .pNext { nullptr },
         .flags {},
         .pApplicationInfo { &applicationInfo },
-        .enabledLayerCount {},
-        .ppEnabledLayerNames {},
-        .enabledExtensionCount {},
-        .ppEnabledExtensionNames {}
+        .enabledLayerCount { static_cast<uint32_t>(layers.size()) },
+        .ppEnabledLayerNames { layers.data() },
+        .enabledExtensionCount { static_cast<uint32_t>(extensions.size()) },
+        .ppEnabledExtensionNames { extensions.data() }
     };
 
     CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance), "Failed to create instance.");
