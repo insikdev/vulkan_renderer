@@ -9,6 +9,8 @@
     <ClInclude Include="vk_swapchain.h" />
     <ClInclude Include="vk_wsi.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="vk_shader.h" />
+    <ClInclude Include="check_vk.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -18,5 +20,7 @@
     <ClCompile Include="vk_swapchain.cpp" />
     <ClCompile Include="vk_wsi.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="vk_shader.cpp" />
+    <ClCompile Include="check_vk.cpp" />
   </ItemGroup>
 </Project>

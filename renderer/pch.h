@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <vector>
 #include <memory>
+#include <fstream>
+#include <iostream>
 
 // library
 #define VK_USE_PLATFORM_WIN32_KHR

@@ -13,6 +13,8 @@ public:
     VkPhysicalDevice GetPhysicalDeviceHandle(void) const { return m_physicalDevice; }
     uint32_t GetGraphicQueueFamilyIndex(void) const { return m_graphicsQueueFamilyIndex; }
     uint32_t GetPresentQueueFamilyIndex(void) const { return m_presentQueueFamilyIndex; }
+    VkQueue GetGrahpicsQueue(void) const { return m_graphicsQueue; }
+    VkQueue GetPresentQueue(void) const { return m_presentQueue; }
 
 private:
     VkPhysicalDevice SelectPhysicalDevice();

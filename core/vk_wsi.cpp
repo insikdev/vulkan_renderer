@@ -1,8 +1,5 @@
 #include "pch.h"
 #include "vk_wsi.h"
-#include "vk_instance.h"
-#include "vk_device.h"
-#include "vk_swapchain.h"
 
 VK::WSI::WSI(Instance* pInstance, Device* pDevice, Swapchain* pSwapchain, VkSurfaceKHR surface)
     : p_instance { pInstance }
