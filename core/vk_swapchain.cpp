@@ -17,11 +17,38 @@ VK::Swapchain::Swapchain(const Device* pDevice, VkSurfaceKHR surface)
 
 VK::Swapchain::~Swapchain()
 {
+    for (auto framebuffer : m_framebuffers) {
+        vkDestroyFramebuffer(p_device->GetHandle(), framebuffer, nullptr);
+    }
+
     for (auto imageView : m_imageViews) {
         vkDestroyImageView(p_device->GetHandle(), imageView, nullptr);
     }
 
     vkDestroySwapchainKHR(p_device->GetHandle(), m_swapchain, nullptr);
+}
+
+void VK::Swapchain::CreateFrameBuffers(VkRenderPass renderPass)
+{
+    m_framebuffers.resize(m_imageViews.size());
+
+    for (size_t i = 0; i < m_imageViews.size(); i++) {
+        VkImageView attachments[] = { m_imageViews[i] };
+
+        VkFramebufferCreateInfo framebufferInfo {
+            .sType { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO },
+            .pNext { nullptr },
+            .flags {},
+            .renderPass { renderPass },
+            .attachmentCount { 1 },
+            .pAttachments { attachments },
+            .width { m_capabilities.currentExtent.width },
+            .height { m_capabilities.currentExtent.height },
+            .layers { 1 },
+        };
+
+        CHECK_VK(vkCreateFramebuffer(p_device->GetHandle(), &framebufferInfo, nullptr, &m_framebuffers[i]), "Failed to create frame buffer.");
+    }
 }
 
 VkSurfaceFormatKHR VK::Swapchain::SelectFormat(void)
@@ -43,7 +70,7 @@ VkSurfaceFormatKHR VK::Swapchain::SelectFormat(void)
 
 VkPresentModeKHR VK::Swapchain::SelectPresentMode(void)
 {
-    std::vector<VkPresentModeKHR> availablePresentModes = Query::GetPresentModes(p_device->GetPhysicalDeviceHandle(), m_surface);
+    const auto& availablePresentModes = Query::GetPresentModes(p_device->GetPhysicalDeviceHandle(), m_surface);
 
     if (availablePresentModes.empty()) {
         throw std::runtime_error("Failed to create swap chain.");
@@ -66,7 +93,7 @@ void VK::Swapchain::CreateSwapchain(void)
         imageCount = m_capabilities.maxImageCount;
     }
 
-    if (m_capabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)()) {
+    if (m_capabilities.currentExtent.width == UINT32_MAX) {
         throw std::runtime_error("Failed to create swap chain.");
     }
 

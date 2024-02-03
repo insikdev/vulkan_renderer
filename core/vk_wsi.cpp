@@ -1,44 +1,24 @@
 #include "pch.h"
 #include "vk_wsi.h"
+#include "vk_instance.h"
+#include "vk_surface.h"
+#include "vk_device.h"
+#include "vk_swapchain.h"
 
-VK::WSI::WSI(Instance* pInstance, Device* pDevice, Swapchain* pSwapchain, VkSurfaceKHR surface)
-    : p_instance { pInstance }
-    , p_device { pDevice }
-    , p_swapchain { pSwapchain }
-    , m_surface { surface }
+#ifdef _WIN32
+VK::WSI::WSI(const std::vector<const char*>& instanceLayers, const std::vector<const char*>& instanceExtensions, const std::vector<const char*>& deviceExtensions, HINSTANCE hinstance, HWND hwnd)
 {
+    p_instance = new Instance { instanceLayers, instanceExtensions };
+    p_surface = new Surface { p_instance->GetHandle(), hinstance, hwnd };
+    p_device = new Device { p_instance->GetHandle(), p_surface->GetHandle(), deviceExtensions };
+    p_swapchain = new Swapchain { p_device, p_surface->GetHandle() };
 }
+#endif
 
 VK::WSI::~WSI()
 {
     delete p_swapchain;
     delete p_device;
-    vkDestroySurfaceKHR(p_instance->GetHandle(), m_surface, nullptr);
+    delete p_surface;
     delete p_instance;
-}
-
-std::unique_ptr<VK::WSI> VK::WSI::CreateWin32(
-    const std::vector<const char*>& instanceLayers,
-    const std::vector<const char*>& instanceExtensions,
-    const std::vector<const char*>& deviceExtensions,
-    HINSTANCE hinstance, HWND hwnd)
-{
-    Instance* pInstance = new Instance { instanceLayers, instanceExtensions };
-
-    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo {
-        .sType { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR },
-        .pNext { nullptr },
-        .flags {},
-        .hinstance { hinstance },
-        .hwnd { hwnd }
-    };
-
-    VkSurfaceKHR surface { VK_NULL_HANDLE };
-
-    CHECK_VK(vkCreateWin32SurfaceKHR(pInstance->GetHandle(), &surfaceCreateInfo, nullptr, &surface), "Failed to create win32 surface.");
-
-    Device* pDevice = new Device { pInstance, surface, deviceExtensions };
-    Swapchain* pSwapchain = new Swapchain { pDevice, surface };
-
-    return std::unique_ptr<WSI>(new WSI { pInstance, pDevice, pSwapchain, surface });
 }

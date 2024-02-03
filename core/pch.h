@@ -12,7 +12,6 @@
 #include <vector>
 #include <memory>
 #include <set>
-#include <limits>
 #include <cstdint>
 
 #include "check_vk.h"

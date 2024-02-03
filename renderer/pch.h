@@ -15,5 +15,12 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#include <glm/glm.hpp>
+
 // core
 #include <vk_core.h>
+
+struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+};

@@ -6,11 +6,8 @@ public:
     Instance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions);
     ~Instance();
 
-public:
+public: // getter
     VkInstance GetHandle(void) const { return m_instance; }
-
-private:
-    void CreateInstance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions);
 
 private:
     VkInstance m_instance { VK_NULL_HANDLE };

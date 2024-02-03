@@ -11,6 +11,10 @@
     <ClInclude Include="utils.h" />
     <ClInclude Include="vk_shader.h" />
     <ClInclude Include="check_vk.h" />
+    <ClInclude Include="vk_surface.h" />
+    <ClInclude Include="vma.h" />
+    <ClInclude Include="vk_buffer.h" />
+    <ClInclude Include="vk_resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -22,5 +26,9 @@
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="vk_shader.cpp" />
     <ClCompile Include="check_vk.cpp" />
+    <ClCompile Include="vk_surface.cpp" />
+    <ClCompile Include="vma.cpp" />
+    <ClCompile Include="vk_buffer.cpp" />
+    <ClCompile Include="vk_resource.cpp" />
   </ItemGroup>
 </Project>

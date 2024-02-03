@@ -13,16 +13,6 @@ VK::Instance::Instance(const std::vector<const char*>& requiredLayers, const std
         throw std::runtime_error("Required extensions are not supported.");
     }
 
-    CreateInstance(requiredLayers, requiredExtensions);
-}
-
-VK::Instance::~Instance()
-{
-    vkDestroyInstance(m_instance, nullptr);
-}
-
-void VK::Instance::CreateInstance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
-{
     VkApplicationInfo applicationInfo {
         .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },
         .pNext { nullptr },
@@ -45,4 +35,9 @@ void VK::Instance::CreateInstance(const std::vector<const char*>& requiredLayers
     };
 
     CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance), "Failed to create instance.");
+}
+
+VK::Instance::~Instance()
+{
+    vkDestroyInstance(m_instance, nullptr);
 }

@@ -1,11 +1,12 @@
 #include "pch.h"
+#define VMA_IMPLEMENTATION
 #include "vk_device.h"
-#include "vk_instance.h"
 #include "query.h"
 #include "utils.h"
+#include "vk_buffer.h"
 
-VK::Device::Device(const Instance* pInstance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
-    : p_instance { pInstance }
+VK::Device::Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
+    : m_instance { instance }
 {
     m_physicalDevice = SelectPhysicalDevice();
 
@@ -15,16 +16,100 @@ VK::Device::Device(const Instance* pInstance, VkSurfaceKHR surface, const std::v
 
     SelectQueueIndex(surface);
     CreateLogicalDevice(requiredExtensions);
+    CreateMemoryAllocator();
+    CreateCommandPool();
 }
 
 VK::Device::~Device()
 {
+    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+    vmaDestroyAllocator(m_allocator);
     vkDestroyDevice(m_device, nullptr);
+}
+
+VK::Buffer* VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
+{
+    VkBufferCreateInfo bufferCreateInfo {
+        .sType { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO },
+        .pNext { nullptr },
+        .flags {},
+        .size { size },
+        .usage { usage },
+        .sharingMode {},
+        .queueFamilyIndexCount {},
+        .pQueueFamilyIndices {}
+    };
+
+    VmaAllocationCreateInfo allocationCreateInfo = {
+        .flags { allocationFlags },
+        .usage { VMA_MEMORY_USAGE_AUTO },
+        .requiredFlags {},
+        .preferredFlags {},
+        .memoryTypeBits {},
+        .pool {},
+        .pUserData {},
+        .priority {}
+    };
+
+    auto buffer = new VK::Buffer { m_allocator };
+
+    CHECK_VK(vmaCreateBuffer(m_allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer->m_buffer, &buffer->m_allocation, &buffer->m_allocationInfo), "Failed to create buffer.");
+
+    return buffer;
+}
+
+void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
+{
+    VkCommandBufferAllocateInfo allocInfo {
+        .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
+        .pNext { nullptr },
+        .commandPool { m_commandPool },
+        .level { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
+        .commandBufferCount { 1 }
+    };
+
+    VkCommandBuffer commandBuffer;
+    CHECK_VK(vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer), "");
+
+    VkCommandBufferBeginInfo beginInfo {
+        .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
+        .pNext { nullptr },
+        .flags { VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT },
+        .pInheritanceInfo {}
+    };
+
+    CHECK_VK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "");
+
+    VkBufferCopy copyRegion {
+        .srcOffset {},
+        .dstOffset {},
+        .size { size }
+    };
+
+    vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+    CHECK_VK(vkEndCommandBuffer(commandBuffer), "");
+
+    VkSubmitInfo submitInfo {
+        .sType { VK_STRUCTURE_TYPE_SUBMIT_INFO },
+        .pNext { nullptr },
+        .waitSemaphoreCount {},
+        .pWaitSemaphores {},
+        .pWaitDstStageMask {},
+        .commandBufferCount { 1 },
+        .pCommandBuffers { &commandBuffer },
+        .signalSemaphoreCount {},
+        .pSignalSemaphores {}
+    };
+
+    CHECK_VK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE), "");
+    CHECK_VK(vkQueueWaitIdle(m_graphicsQueue), "");
+
+    vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
 }
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice()
 {
-    const auto& devices = Query::GetPhysicalDevices(p_instance->GetHandle());
+    const auto& devices = Query::GetPhysicalDevices(m_instance);
 
     if (devices.empty()) {
         throw std::runtime_error("Failed to find GPUs with Vulkan support.");
@@ -114,4 +199,27 @@ void VK::Device::CreateLogicalDevice(const std::vector<const char*>& requiredExt
 
     vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
     vkGetDeviceQueue(m_device, m_presentQueueFamilyIndex, 0, &m_presentQueue);
+}
+
+void VK::Device::CreateMemoryAllocator()
+{
+    VmaAllocatorCreateInfo allocatorCreateInfo {
+        .physicalDevice { m_physicalDevice },
+        .device { m_device },
+        .instance { m_instance }
+    };
+
+    CHECK_VK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator), "Failed to create memory allocator");
+}
+
+inline void VK::Device::CreateCommandPool(void)
+{
+    VkCommandPoolCreateInfo commandPoolCreateInfo {
+        .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
+        .pNext { nullptr },
+        .flags { VK_COMMAND_POOL_CREATE_TRANSIENT_BIT },
+        .queueFamilyIndex { m_graphicsQueueFamilyIndex }
+    };
+
+    CHECK_VK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_commandPool), "Failed to create command pool");
 }

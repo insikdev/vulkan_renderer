@@ -10,28 +10,27 @@ App::App(uint32_t width, uint32_t height)
     CreateWSI();
     CreateRenderPass();
     CreatePipeline();
-    CreateFrameBuffers();
+    p_wsi->GetSwapchain()->CreateFrameBuffers(renderPass);
     CreateCommandPool();
     CreateCommandBuffer();
     CreateSyncObjects();
+    CreateBuffer();
 }
 
 App::~App()
 {
-    vkDestroySemaphore(p_wsi->GetDevice(), imageAvailableSemaphore, nullptr);
-    vkDestroySemaphore(p_wsi->GetDevice(), renderFinishedSemaphore, nullptr);
-    vkDestroyFence(p_wsi->GetDevice(), inFlightFence, nullptr);
+    delete m_mesh;
+    vkDestroySemaphore(p_wsi->GetDevice()->GetHandle(), imageAvailableSemaphore, nullptr);
+    vkDestroySemaphore(p_wsi->GetDevice()->GetHandle(), renderFinishedSemaphore, nullptr);
+    vkDestroyFence(p_wsi->GetDevice()->GetHandle(), inFlightFence, nullptr);
 
-    vkDestroyCommandPool(p_wsi->GetDevice(), commandPool, nullptr);
-    for (auto framebuffer : swapChainFramebuffers) {
-        vkDestroyFramebuffer(p_wsi->GetDevice(), framebuffer, nullptr);
-    }
+    vkDestroyCommandPool(p_wsi->GetDevice()->GetHandle(), commandPool, nullptr);
 
-    vkDestroyPipeline(p_wsi->GetDevice(), graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(p_wsi->GetDevice(), pipelineLayout, nullptr);
-    vkDestroyRenderPass(p_wsi->GetDevice(), renderPass, nullptr);
-    p_wsi.reset();
+    vkDestroyPipeline(p_wsi->GetDevice()->GetHandle(), graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(p_wsi->GetDevice()->GetHandle(), pipelineLayout, nullptr);
+    vkDestroyRenderPass(p_wsi->GetDevice()->GetHandle(), renderPass, nullptr);
 
+    delete p_wsi;
     glfwDestroyWindow(m_window);
     glfwTerminate();
 }
@@ -43,7 +42,7 @@ void App::Run(void)
         Draw();
     }
 
-    vkDeviceWaitIdle(p_wsi->GetDevice());
+    vkDeviceWaitIdle(p_wsi->GetDevice()->GetHandle());
 }
 
 void App::CreateGLFW(void)
@@ -74,14 +73,14 @@ void App::CreateWSI(void)
     HINSTANCE hinstance = GetModuleHandle(nullptr);
     HWND hwnd = glfwGetWin32Window(m_window);
 
-    p_wsi = VK::WSI::CreateWin32(instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd);
+    p_wsi = new VK::WSI { instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd };
 }
 
 void App::CreateRenderPass(void)
 {
     VkAttachmentDescription colorAttachment {
         .flags {},
-        .format { p_wsi->GetFormat() },
+        .format { p_wsi->GetSwapchain()->GetFormat().format },
         .samples { VK_SAMPLE_COUNT_1_BIT },
         .loadOp { VK_ATTACHMENT_LOAD_OP_CLEAR },
         .storeOp { VK_ATTACHMENT_STORE_OP_STORE },
@@ -131,7 +130,7 @@ void App::CreateRenderPass(void)
         .pDependencies { &dependency }
     };
 
-    CHECK_VK(vkCreateRenderPass(p_wsi->GetDevice(), &renderPassCreateInfo, nullptr, &renderPass), "Failed to create render pass.");
+    CHECK_VK(vkCreateRenderPass(p_wsi->GetDevice()->GetHandle(), &renderPassCreateInfo, nullptr, &renderPass), "Failed to create render pass.");
 }
 
 void App::CreatePipeline(void)
@@ -139,8 +138,8 @@ void App::CreatePipeline(void)
     const auto& vertexShaderCode = Utils::ReadFile("./shaders/simple.vert.spv");
     const auto& fragmentShaderCode = Utils::ReadFile("./shaders/simple.frag.spv");
 
-    VK::Shader vertexShader { p_wsi->GetDevice(), vertexShaderCode };
-    VK::Shader fragmentShader { p_wsi->GetDevice(), fragmentShaderCode };
+    VK::Shader vertexShader { p_wsi->GetDevice()->GetHandle(), vertexShaderCode };
+    VK::Shader fragmentShader { p_wsi->GetDevice()->GetHandle(), fragmentShaderCode };
 
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
@@ -177,14 +176,34 @@ void App::CreatePipeline(void)
         .pDynamicStates { dynamicStates.data() }
     };
 
+    VkVertexInputBindingDescription bindingDescription {
+        .binding { 0 },
+        .stride { sizeof(Vertex) },
+        .inputRate { VK_VERTEX_INPUT_RATE_VERTEX }
+    };
+
+    VkVertexInputAttributeDescription pos {
+        .location { 0 },
+        .binding { 0 },
+        .format { VK_FORMAT_R32G32_SFLOAT },
+        .offset { offsetof(Vertex, pos) },
+    };
+    VkVertexInputAttributeDescription color {
+        .location { 1 },
+        .binding { 0 },
+        .format { VK_FORMAT_R32G32B32_SFLOAT },
+        .offset { offsetof(Vertex, color) },
+    };
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions { pos, color };
+
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .vertexBindingDescriptionCount {},
-        .pVertexBindingDescriptions {},
-        .vertexAttributeDescriptionCount {},
-        .pVertexAttributeDescriptions {}
+        .vertexBindingDescriptionCount { 1 },
+        .pVertexBindingDescriptions { &bindingDescription },
+        .vertexAttributeDescriptionCount { static_cast<uint32_t>(attributeDescriptions.size()) },
+        .pVertexAttributeDescriptions { attributeDescriptions.data() }
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo {
@@ -198,15 +217,15 @@ void App::CreatePipeline(void)
     VkViewport viewport {
         .x { 0.0f },
         .y { 0.0f },
-        .width { static_cast<float>(p_wsi->GetExtent().width) },
-        .height { static_cast<float>(p_wsi->GetExtent().height) },
+        .width { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().width) },
+        .height { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().height) },
         .minDepth { 0.0f },
         .maxDepth { 1.0f }
     };
 
     VkRect2D scissor {
         .offset { 0, 0 },
-        .extent { p_wsi->GetExtent() }
+        .extent { p_wsi->GetSwapchain()->GetExtent() }
     };
 
     VkPipelineViewportStateCreateInfo viewportStateCreateInfo {
@@ -294,7 +313,7 @@ void App::CreatePipeline(void)
         .pPushConstantRanges { nullptr },
     };
 
-    CHECK_VK(vkCreatePipelineLayout(p_wsi->GetDevice(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout.");
+    CHECK_VK(vkCreatePipelineLayout(p_wsi->GetDevice()->GetHandle(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout.");
 
     VkGraphicsPipelineCreateInfo pipelineInfo {
         .sType { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO },
@@ -318,33 +337,7 @@ void App::CreatePipeline(void)
         .basePipelineIndex {}
     };
 
-    CHECK_VK(vkCreateGraphicsPipelines(p_wsi->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create pipeline");
-}
-
-void App::CreateFrameBuffers(void)
-{
-    const auto& imageView = p_wsi->GetImageViews();
-    swapChainFramebuffers.resize(imageView.size());
-
-    for (size_t i = 0; i < imageView.size(); i++) {
-        VkImageView attachments[] = {
-            imageView[i]
-        };
-
-        VkFramebufferCreateInfo framebufferInfo {
-            .sType { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO },
-            .pNext { nullptr },
-            .flags {},
-            .renderPass { renderPass },
-            .attachmentCount { 1 },
-            .pAttachments { attachments },
-            .width { p_wsi->GetExtent().width },
-            .height { p_wsi->GetExtent().height },
-            .layers { 1 },
-        };
-
-        CHECK_VK(vkCreateFramebuffer(p_wsi->GetDevice(), &framebufferInfo, nullptr, &swapChainFramebuffers[i]), "Failed to create frame buffer.");
-    }
+    CHECK_VK(vkCreateGraphicsPipelines(p_wsi->GetDevice()->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create pipeline");
 }
 
 void App::CreateCommandPool(void)
@@ -353,10 +346,10 @@ void App::CreateCommandPool(void)
         .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
         .pNext { nullptr },
         .flags { VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT },
-        .queueFamilyIndex { 0 }
+        .queueFamilyIndex { p_wsi->GetDevice()->GetGraphicQueueFamilyIndex() }
     };
 
-    CHECK_VK(vkCreateCommandPool(p_wsi->GetDevice(), &commandPoolCreateInfo, nullptr, &commandPool), "Failed to create command pool");
+    CHECK_VK(vkCreateCommandPool(p_wsi->GetDevice()->GetHandle(), &commandPoolCreateInfo, nullptr, &commandPool), "Failed to create command pool");
 }
 
 void App::CreateCommandBuffer(void)
@@ -369,7 +362,7 @@ void App::CreateCommandBuffer(void)
         .commandBufferCount { 1 },
     };
 
-    CHECK_VK(vkAllocateCommandBuffers(p_wsi->GetDevice(), &allocInfo, &commandBuffer), "Failed to create command bufffer.");
+    CHECK_VK(vkAllocateCommandBuffers(p_wsi->GetDevice()->GetHandle(), &allocInfo, &commandBuffer), "Failed to create command bufffer.");
 }
 
 void App::CreateSyncObjects(void)
@@ -386,9 +379,9 @@ void App::CreateSyncObjects(void)
         .flags { VK_FENCE_CREATE_SIGNALED_BIT }
     };
 
-    CHECK_VK(vkCreateSemaphore(p_wsi->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphore), "");
-    CHECK_VK(vkCreateSemaphore(p_wsi->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphore), "");
-    CHECK_VK(vkCreateFence(p_wsi->GetDevice(), &fenceInfo, nullptr, &inFlightFence), "");
+    CHECK_VK(vkCreateSemaphore(p_wsi->GetDevice()->GetHandle(), &semaphoreInfo, nullptr, &imageAvailableSemaphore), "");
+    CHECK_VK(vkCreateSemaphore(p_wsi->GetDevice()->GetHandle(), &semaphoreInfo, nullptr, &renderFinishedSemaphore), "");
+    CHECK_VK(vkCreateFence(p_wsi->GetDevice()->GetHandle(), &fenceInfo, nullptr, &inFlightFence), "");
 }
 
 void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -404,7 +397,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
 
     VkRect2D renderArea {
         .offset { 0, 0 },
-        .extent { p_wsi->GetExtent() }
+        .extent { p_wsi->GetSwapchain()->GetExtent() }
     };
 
     VkClearValue clearColor = { { { 0.0f, 0.0f, 0.0f, 1.0f } } };
@@ -413,7 +406,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
         .sType { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO },
         .pNext { nullptr },
         .renderPass { renderPass },
-        .framebuffer { swapChainFramebuffers[imageIndex] },
+        .framebuffer { p_wsi->GetSwapchain()->GetFrameBuffer(imageIndex) },
         .renderArea { renderArea },
         .clearValueCount { 1 },
         .pClearValues { &clearColor }
@@ -426,32 +419,46 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     VkViewport viewport {
         .x { 0.0f },
         .y { 0.0f },
-        .width { static_cast<float>(p_wsi->GetExtent().width) },
-        .height { static_cast<float>(p_wsi->GetExtent().height) },
+        .width { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().width) },
+        .height { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().height) },
         .minDepth { 0.0f },
         .maxDepth { 1.0f }
     };
 
     VkRect2D scissor {
         .offset { 0, 0 },
-        .extent { p_wsi->GetExtent() }
+        .extent { p_wsi->GetSwapchain()->GetExtent() }
     };
 
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    m_mesh->Draw(commandBuffer);
     vkCmdEndRenderPass(commandBuffer);
 
     CHECK_VK(vkEndCommandBuffer(commandBuffer), "Failed to record command buffer.");
 }
 
+void App::CreateBuffer(void)
+{
+    std::vector<Vertex> vertices = {
+        { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+        { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
+        { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+        { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } }
+    };
+
+    std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
+
+    m_mesh = new Mesh { p_wsi->GetDevice(), vertices, indices };
+}
+
 void App::Draw(void)
 {
-    vkWaitForFences(p_wsi->GetDevice(), 1, &inFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(p_wsi->GetDevice(), 1, &inFlightFence);
+    vkWaitForFences(p_wsi->GetDevice()->GetHandle(), 1, &inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(p_wsi->GetDevice()->GetHandle(), 1, &inFlightFence);
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(p_wsi->GetDevice(), p_wsi->GetSwapchain(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    vkAcquireNextImageKHR(p_wsi->GetDevice()->GetHandle(), p_wsi->GetSwapchain()->GetHandle(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
     vkResetCommandBuffer(commandBuffer, 0);
     recordCommandBuffer(commandBuffer, imageIndex);
@@ -472,9 +479,9 @@ void App::Draw(void)
         .pSignalSemaphores { signalSemaphores }
     };
 
-    CHECK_VK(vkQueueSubmit(p_wsi->GetGrahpicsQueue(), 1, &submitInfo, inFlightFence), "Failed to submit command buffer.");
+    CHECK_VK(vkQueueSubmit(p_wsi->GetDevice()->GetGrahpicsQueue(), 1, &submitInfo, inFlightFence), "Failed to submit command buffer.");
 
-    VkSwapchainKHR swapChains[] = { p_wsi->GetSwapchain() };
+    VkSwapchainKHR swapChains[] = { p_wsi->GetSwapchain()->GetHandle() };
 
     VkPresentInfoKHR presentInfo {
         .sType { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR },
@@ -487,5 +494,5 @@ void App::Draw(void)
         .pResults { nullptr },
     };
 
-    CHECK_VK(vkQueuePresentKHR(p_wsi->GetPresentQueue(), &presentInfo), "Failed to present image.");
+    CHECK_VK(vkQueuePresentKHR(p_wsi->GetDevice()->GetPresentQueue(), &presentInfo), "Failed to present image.");
 }

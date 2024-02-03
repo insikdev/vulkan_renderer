@@ -154,18 +154,23 @@
     <ClInclude Include="check_vk.h" />
     <ClInclude Include="query.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="vk_buffer.h" />
     <ClInclude Include="vk_device.h" />
     <ClInclude Include="vk_instance.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="vk_core.h" />
+    <ClInclude Include="vk_resource.h" />
     <ClInclude Include="vk_shader.h" />
+    <ClInclude Include="vk_surface.h" />
     <ClInclude Include="vk_swapchain.h" />
     <ClInclude Include="vk_wsi.h" />
+    <ClInclude Include="vma.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="check_vk.cpp" />
     <ClCompile Include="query.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="vk_buffer.cpp" />
     <ClCompile Include="vk_device.cpp" />
     <ClCompile Include="vk_instance.cpp" />
     <ClCompile Include="pch.cpp">
@@ -174,9 +179,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="vk_resource.cpp" />
     <ClCompile Include="vk_shader.cpp" />
+    <ClCompile Include="vk_surface.cpp" />
     <ClCompile Include="vk_swapchain.cpp" />
     <ClCompile Include="vk_wsi.cpp" />
+    <ClCompile Include="vma.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
