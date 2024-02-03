@@ -16,7 +16,7 @@ private:
 
 public:
     VK::Device* p_device;
-    VK::Buffer* m_vertexBuffer;
-    VK::Buffer* m_indexBuffer;
+    VK::Buffer m_vertexBuffer;
+    VK::Buffer m_indexBuffer;
     uint32_t m_indexCount;
 };

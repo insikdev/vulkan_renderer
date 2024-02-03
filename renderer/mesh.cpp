@@ -11,17 +11,17 @@ Mesh::Mesh(VK::Device* pDevice, const std::vector<Vertex>& vertices, const std::
 
 Mesh::~Mesh()
 {
-    delete m_vertexBuffer;
-    delete m_indexBuffer;
+    p_device->DestroyBuffer(m_vertexBuffer);
+    p_device->DestroyBuffer(m_indexBuffer);
 }
 
 void Mesh::Draw(VkCommandBuffer commandBuffer)
 {
-    VkBuffer vertexBuffers[] = { m_vertexBuffer->GetHandle() };
+    VkBuffer vertexBuffers[] = { m_vertexBuffer.handle };
     VkDeviceSize offsets[] = { 0 };
 
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer->GetHandle(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(commandBuffer, m_indexCount, 1, 0, 0, 0);
 }
 
@@ -32,15 +32,15 @@ void Mesh::CreateVertexBuffer(const std::vector<Vertex>& vertices)
     VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VK::Buffer* stagingBuffer = p_device->CreateBuffer(bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
-    stagingBuffer->CopyDataToDevice((void*)vertices.data(), bufferSize);
+    VK::Buffer stagingBuffer = p_device->CreateBuffer(bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
+    p_device->CopyDataToDevice(stagingBuffer.allocation, (void*)vertices.data(), bufferSize);
 
     VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     m_vertexBuffer = p_device->CreateBuffer(bufferSize, bufferUsage);
 
-    p_device->CopyBuffer(stagingBuffer->GetHandle(), m_vertexBuffer->GetHandle(), bufferSize);
+    p_device->CopyBuffer(stagingBuffer.handle, m_vertexBuffer.handle, bufferSize);
 
-    delete stagingBuffer;
+    p_device->DestroyBuffer(stagingBuffer);
 }
 
 void Mesh::CreateIndexBuffer(const std::vector<uint32_t>& indices)
@@ -50,13 +50,13 @@ void Mesh::CreateIndexBuffer(const std::vector<uint32_t>& indices)
     VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VK::Buffer* stagingBuffer = p_device->CreateBuffer(bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
-    stagingBuffer->CopyDataToDevice((void*)indices.data(), bufferSize);
+    VK::Buffer stagingBuffer = p_device->CreateBuffer(bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
+    p_device->CopyDataToDevice(stagingBuffer.allocation, (void*)indices.data(), bufferSize);
 
     VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     m_indexBuffer = p_device->CreateBuffer(bufferSize, bufferUsage);
 
-    p_device->CopyBuffer(stagingBuffer->GetHandle(), m_indexBuffer->GetHandle(), bufferSize);
+    p_device->CopyBuffer(stagingBuffer.handle, m_indexBuffer.handle, bufferSize);
 
-    delete stagingBuffer;
+    p_device->DestroyBuffer(stagingBuffer);
 }

@@ -1,9 +1,2 @@
-#include "pch.h"
+#define VMA_IMPLEMENTATION
 #include "vk_resource.h"
-
-VK::Resource::Resource(VmaAllocator allocator)
-    : m_allocator { allocator }
-{
-}
-
-VK::Resource::~Resource() { }

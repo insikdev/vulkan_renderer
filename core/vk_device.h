@@ -1,18 +1,18 @@
 #pragma once
 
-#include <vk_mem_alloc.h>
+#include "vk_resource.h"
 
 namespace VK {
-class Buffer;
-
 class Device {
 public:
     Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions);
     ~Device();
 
 public:
-    Buffer* CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
+    Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
+    void DestroyBuffer(Buffer buffer);
     void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+    void CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size);
 
 public: // getter
     VkPhysicalDevice GetPhysicalDeviceHandle(void) const { return m_physicalDevice; }

@@ -1,9 +1,7 @@
 #include "pch.h"
-#define VMA_IMPLEMENTATION
 #include "vk_device.h"
 #include "query.h"
 #include "utils.h"
-#include "vk_buffer.h"
 
 VK::Device::Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
     : m_instance { instance }
@@ -27,7 +25,7 @@ VK::Device::~Device()
     vkDestroyDevice(m_device, nullptr);
 }
 
-VK::Buffer* VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
+VK::Buffer VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
 {
     VkBufferCreateInfo bufferCreateInfo {
         .sType { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO },
@@ -51,11 +49,15 @@ VK::Buffer* VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage
         .priority {}
     };
 
-    auto buffer = new VK::Buffer { m_allocator };
-
-    CHECK_VK(vmaCreateBuffer(m_allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer->m_buffer, &buffer->m_allocation, &buffer->m_allocationInfo), "Failed to create buffer.");
+    Buffer buffer {};
+    CHECK_VK(vmaCreateBuffer(m_allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer.handle, &buffer.allocation, nullptr), "Failed to create buffer.");
 
     return buffer;
+}
+
+void VK::Device::DestroyBuffer(Buffer buffer)
+{
+    vmaDestroyBuffer(m_allocator, buffer.handle, buffer.allocation);
 }
 
 void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
@@ -105,6 +107,14 @@ void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
     CHECK_VK(vkQueueWaitIdle(m_graphicsQueue), "");
 
     vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
+}
+
+void VK::Device::CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size)
+{
+    void* mappedData;
+    vmaMapMemory(m_allocator, allocation, &mappedData);
+    memcpy(mappedData, pSrc, size);
+    vmaUnmapMemory(m_allocator, allocation);
 }
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice()
