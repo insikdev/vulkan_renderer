@@ -14,12 +14,17 @@ private:
     void CreateGLFW(void);
     void CreateWSI(void);
     void CreateRenderPass(void);
+    void CreateDescriptorSetLayout(void);
     void CreatePipeline(void);
     void CreateCommandPool(void);
     void CreateCommandBuffer(void);
     void CreateSyncObjects(void);
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-    void CreateBuffer(void);
+    void CreateMesh(void);
+    void CreateUniformBuffer(void);
+    void CreateDescriptorPool(void);
+    void CreateDescriptorSets(void);
+
     void Draw(void);
 
 private:
@@ -30,6 +35,7 @@ private:
 private:
     VK::WSI* p_wsi;
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;
@@ -38,4 +44,8 @@ private:
     VkSemaphore renderFinishedSemaphore;
     VkFence inFlightFence;
     Mesh* m_mesh;
+    VK::Buffer globalUBO;
+    VkDescriptorPool descriptorPool;
+    // VkDescriptorSet descriptorSets;
+    std::vector<VkDescriptorSet> descriptorSets;
 };

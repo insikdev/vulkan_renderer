@@ -9,23 +9,30 @@ App::App(uint32_t width, uint32_t height)
     CreateGLFW();
     CreateWSI();
     CreateRenderPass();
+    CreateDescriptorSetLayout();
     CreatePipeline();
     p_wsi->GetSwapchain()->CreateFrameBuffers(renderPass);
     CreateCommandPool();
     CreateCommandBuffer();
     CreateSyncObjects();
-    CreateBuffer();
+    CreateMesh();
+    CreateUniformBuffer();
+    CreateDescriptorPool();
+    CreateDescriptorSets();
 }
 
 App::~App()
 {
     delete m_mesh;
+    vkDestroyDescriptorPool(p_wsi->GetDevice()->GetHandle(), descriptorPool, nullptr);
+
+    p_wsi->GetDevice()->DestroyBuffer(globalUBO);
     vkDestroySemaphore(p_wsi->GetDevice()->GetHandle(), imageAvailableSemaphore, nullptr);
     vkDestroySemaphore(p_wsi->GetDevice()->GetHandle(), renderFinishedSemaphore, nullptr);
     vkDestroyFence(p_wsi->GetDevice()->GetHandle(), inFlightFence, nullptr);
 
     vkDestroyCommandPool(p_wsi->GetDevice()->GetHandle(), commandPool, nullptr);
-
+    vkDestroyDescriptorSetLayout(p_wsi->GetDevice()->GetHandle(), descriptorSetLayout, nullptr);
     vkDestroyPipeline(p_wsi->GetDevice()->GetHandle(), graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(p_wsi->GetDevice()->GetHandle(), pipelineLayout, nullptr);
     vkDestroyRenderPass(p_wsi->GetDevice()->GetHandle(), renderPass, nullptr);
@@ -133,6 +140,27 @@ void App::CreateRenderPass(void)
     CHECK_VK(vkCreateRenderPass(p_wsi->GetDevice()->GetHandle(), &renderPassCreateInfo, nullptr, &renderPass), "Failed to create render pass.");
 }
 
+void App::CreateDescriptorSetLayout(void)
+{
+    VkDescriptorSetLayoutBinding globalLayoutBinding {
+        .binding { 0 },
+        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .descriptorCount { 1 },
+        .stageFlags { VK_SHADER_STAGE_VERTEX_BIT },
+        .pImmutableSamplers { nullptr }
+    };
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo {
+        .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO },
+        .pNext { nullptr },
+        .flags {},
+        .bindingCount { 1 },
+        .pBindings { &globalLayoutBinding }
+    };
+
+    CHECK_VK(vkCreateDescriptorSetLayout(p_wsi->GetDevice()->GetHandle(), &layoutInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout.");
+}
+
 void App::CreatePipeline(void)
 {
     const auto& vertexShaderCode = Utils::ReadFile("./shaders/simple.vert.spv");
@@ -188,12 +216,14 @@ void App::CreatePipeline(void)
         .format { VK_FORMAT_R32G32_SFLOAT },
         .offset { offsetof(Vertex, pos) },
     };
+
     VkVertexInputAttributeDescription color {
         .location { 1 },
         .binding { 0 },
         .format { VK_FORMAT_R32G32B32_SFLOAT },
         .offset { offsetof(Vertex, color) },
     };
+
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions { pos, color };
 
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo {
@@ -307,8 +337,8 @@ void App::CreatePipeline(void)
         .sType { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .setLayoutCount { 0 },
-        .pSetLayouts { nullptr },
+        .setLayoutCount { 1 },
+        .pSetLayouts { &descriptorSetLayout },
         .pushConstantRangeCount { 0 },
         .pPushConstantRanges { nullptr },
     };
@@ -433,13 +463,25 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+    /**/
+    GlobalUniformData ubo {
+        .view { glm::mat4(1.0f) },
+        .proj { glm::mat4(1.0f) }
+    };
+
+    p_wsi->GetDevice()->CopyDataToDevice(globalUBO.allocation, &ubo, sizeof(GlobalUniformData));
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[0], 0, nullptr);
+    // memcpy(globalUBO.allocation->(), &ubo, sizeof(GlobalUniformData));
+    /**/
+
     m_mesh->Draw(commandBuffer);
+
     vkCmdEndRenderPass(commandBuffer);
 
     CHECK_VK(vkEndCommandBuffer(commandBuffer), "Failed to record command buffer.");
 }
 
-void App::CreateBuffer(void)
+void App::CreateMesh(void)
 {
     std::vector<Vertex> vertices = {
         { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
@@ -451,6 +493,71 @@ void App::CreateBuffer(void)
     std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 
     m_mesh = new Mesh { p_wsi->GetDevice(), vertices, indices };
+}
+
+void App::CreateUniformBuffer(void)
+{
+    VkDeviceSize bufferSize = sizeof(GlobalUniformData);
+    VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    globalUBO = p_wsi->GetDevice()->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
+}
+
+void App::CreateDescriptorPool(void)
+{
+    VkDescriptorPoolSize poolSize {
+        .type { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .descriptorCount { 1 }
+    };
+
+    VkDescriptorPoolCreateInfo poolInfo {
+        .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO },
+        .pNext { nullptr },
+        .flags {},
+        .maxSets { 1 },
+        .poolSizeCount { 1 },
+        .pPoolSizes { &poolSize }
+    };
+
+    CHECK_VK(vkCreateDescriptorPool(p_wsi->GetDevice()->GetHandle(), &poolInfo, nullptr, &descriptorPool), "Failed to create descriptor pool.");
+}
+
+void App::CreateDescriptorSets(void)
+{
+    descriptorSets.resize(1);
+    std::vector<VkDescriptorSetLayout> layouts(1, descriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo allocInfo {
+        .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO },
+        .pNext {},
+        .descriptorPool { descriptorPool },
+        .descriptorSetCount { 1 },
+        .pSetLayouts { layouts.data() }
+    };
+
+    CHECK_VK(vkAllocateDescriptorSets(p_wsi->GetDevice()->GetHandle(), &allocInfo, descriptorSets.data()), "Failed to allocate descriptor set.");
+
+    VkDescriptorBufferInfo bufferInfo {
+        .buffer { globalUBO.handle },
+        .offset {},
+        .range { sizeof(GlobalUniformData) }
+    };
+
+    VkWriteDescriptorSet descriptorWrite {
+        .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
+        .pNext { nullptr },
+        .dstSet { descriptorSets[0] },
+        .dstBinding {},
+        .dstArrayElement {},
+        .descriptorCount { 1 },
+        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .pImageInfo {},
+        .pBufferInfo { &bufferInfo },
+        .pTexelBufferView {}
+    };
+
+    vkUpdateDescriptorSets(p_wsi->GetDevice()->GetHandle(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void App::Draw(void)

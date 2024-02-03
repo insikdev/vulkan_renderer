@@ -24,3 +24,12 @@ struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
 };
+
+struct MeshUniformData {
+    glm::mat4 world;
+};
+
+struct GlobalUniformData {
+    glm::mat4 view;
+    glm::mat4 proj;
+};
