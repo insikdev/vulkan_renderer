@@ -17,7 +17,7 @@ private:
     void CreateDescriptorSetLayout(void);
     void CreatePipeline(void);
     void CreateCommandPool(void);
-    void CreateCommandBuffer(void);
+    void CreateCommandBuffer();
     void CreateSyncObjects(void);
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void CreateMesh(void);
@@ -25,7 +25,8 @@ private:
     void CreateDescriptorPool(void);
     void CreateDescriptorSets(void);
 
-    void Draw(void);
+    void Update(void);
+    void Render(void);
 
 private:
     uint32_t m_width;
@@ -39,13 +40,11 @@ private:
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
-    Mesh* m_mesh;
-    VK::Buffer globalUBO;
     VkDescriptorPool descriptorPool;
-    // VkDescriptorSet descriptorSets;
-    std::vector<VkDescriptorSet> descriptorSets;
+
+private:
+    constexpr static uint32_t MAX_FRAME = 3;
+    FrameData m_frameData[MAX_FRAME];
+    uint32_t m_currentFrame {};
+    Mesh* m_mesh;
 };

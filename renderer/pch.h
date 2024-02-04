@@ -7,6 +7,7 @@
 #include <memory>
 #include <fstream>
 #include <iostream>
+#include <array>
 
 // library
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -15,7 +16,11 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 // core
 #include <vk_core.h>
@@ -32,4 +37,13 @@ struct MeshUniformData {
 struct GlobalUniformData {
     glm::mat4 view;
     glm::mat4 proj;
+};
+
+struct FrameData {
+    VkCommandBuffer commandBuffer;
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
+    std::vector<VkDescriptorSet> descriptorSets;
+    VK::Buffer globalUBO;
 };

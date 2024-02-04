@@ -2,20 +2,24 @@
 #include "app.h"
 #include "utils.h"
 
+#define CURRENT_FRAME m_frameData[m_currentFrame]
+#define DEVICE p_wsi->GetDevice()
+#define SWAPCHAIN p_wsi->GetSwapchain()
+
 App::App(uint32_t width, uint32_t height)
     : m_width { width }
     , m_height { height }
 {
     CreateGLFW();
     CreateWSI();
+    CreateMesh();
     CreateRenderPass();
     CreateDescriptorSetLayout();
     CreatePipeline();
-    p_wsi->GetSwapchain()->CreateFrameBuffers(renderPass);
+    SWAPCHAIN->CreateFrameBuffers(renderPass);
     CreateCommandPool();
     CreateCommandBuffer();
     CreateSyncObjects();
-    CreateMesh();
     CreateUniformBuffer();
     CreateDescriptorPool();
     CreateDescriptorSets();
@@ -24,18 +28,20 @@ App::App(uint32_t width, uint32_t height)
 App::~App()
 {
     delete m_mesh;
-    vkDestroyDescriptorPool(p_wsi->GetDevice()->GetHandle(), descriptorPool, nullptr);
 
-    p_wsi->GetDevice()->DestroyBuffer(globalUBO);
-    vkDestroySemaphore(p_wsi->GetDevice()->GetHandle(), imageAvailableSemaphore, nullptr);
-    vkDestroySemaphore(p_wsi->GetDevice()->GetHandle(), renderFinishedSemaphore, nullptr);
-    vkDestroyFence(p_wsi->GetDevice()->GetHandle(), inFlightFence, nullptr);
+    for (uint32_t i = 0; i < MAX_FRAME; i++) {
+        DEVICE->DestroyBuffer(m_frameData[i].globalUBO);
+        vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].imageAvailableSemaphore, nullptr);
+        vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].renderFinishedSemaphore, nullptr);
+        vkDestroyFence(DEVICE->GetHandle(), m_frameData[i].inFlightFence, nullptr);
+    }
 
-    vkDestroyCommandPool(p_wsi->GetDevice()->GetHandle(), commandPool, nullptr);
-    vkDestroyDescriptorSetLayout(p_wsi->GetDevice()->GetHandle(), descriptorSetLayout, nullptr);
-    vkDestroyPipeline(p_wsi->GetDevice()->GetHandle(), graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(p_wsi->GetDevice()->GetHandle(), pipelineLayout, nullptr);
-    vkDestroyRenderPass(p_wsi->GetDevice()->GetHandle(), renderPass, nullptr);
+    vkDestroyDescriptorPool(DEVICE->GetHandle(), descriptorPool, nullptr);
+    vkDestroyCommandPool(DEVICE->GetHandle(), commandPool, nullptr);
+    vkDestroyDescriptorSetLayout(DEVICE->GetHandle(), descriptorSetLayout, nullptr);
+    vkDestroyPipeline(DEVICE->GetHandle(), graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(DEVICE->GetHandle(), pipelineLayout, nullptr);
+    vkDestroyRenderPass(DEVICE->GetHandle(), renderPass, nullptr);
 
     delete p_wsi;
     glfwDestroyWindow(m_window);
@@ -46,10 +52,11 @@ void App::Run(void)
 {
     while (glfwWindowShouldClose(m_window) != GL_TRUE) {
         glfwPollEvents();
-        Draw();
+        Update();
+        Render();
     }
 
-    vkDeviceWaitIdle(p_wsi->GetDevice()->GetHandle());
+    vkDeviceWaitIdle(DEVICE->GetHandle());
 }
 
 void App::CreateGLFW(void)
@@ -87,7 +94,7 @@ void App::CreateRenderPass(void)
 {
     VkAttachmentDescription colorAttachment {
         .flags {},
-        .format { p_wsi->GetSwapchain()->GetFormat().format },
+        .format { SWAPCHAIN->GetFormat().format },
         .samples { VK_SAMPLE_COUNT_1_BIT },
         .loadOp { VK_ATTACHMENT_LOAD_OP_CLEAR },
         .storeOp { VK_ATTACHMENT_STORE_OP_STORE },
@@ -137,12 +144,12 @@ void App::CreateRenderPass(void)
         .pDependencies { &dependency }
     };
 
-    CHECK_VK(vkCreateRenderPass(p_wsi->GetDevice()->GetHandle(), &renderPassCreateInfo, nullptr, &renderPass), "Failed to create render pass.");
+    CHECK_VK(vkCreateRenderPass(DEVICE->GetHandle(), &renderPassCreateInfo, nullptr, &renderPass), "Failed to create render pass.");
 }
 
 void App::CreateDescriptorSetLayout(void)
 {
-    VkDescriptorSetLayoutBinding globalLayoutBinding {
+    VkDescriptorSetLayoutBinding binding0 { // model
         .binding { 0 },
         .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
         .descriptorCount { 1 },
@@ -150,15 +157,25 @@ void App::CreateDescriptorSetLayout(void)
         .pImmutableSamplers { nullptr }
     };
 
+    VkDescriptorSetLayoutBinding binding1 { // global
+        .binding { 1 },
+        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .descriptorCount { 1 },
+        .stageFlags { VK_SHADER_STAGE_VERTEX_BIT },
+        .pImmutableSamplers { nullptr }
+    };
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings { binding0, binding1 };
+
     VkDescriptorSetLayoutCreateInfo layoutInfo {
         .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .bindingCount { 1 },
-        .pBindings { &globalLayoutBinding }
+        .bindingCount { static_cast<uint32_t>(bindings.size()) },
+        .pBindings { bindings.data() }
     };
 
-    CHECK_VK(vkCreateDescriptorSetLayout(p_wsi->GetDevice()->GetHandle(), &layoutInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout.");
+    CHECK_VK(vkCreateDescriptorSetLayout(DEVICE->GetHandle(), &layoutInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout.");
 }
 
 void App::CreatePipeline(void)
@@ -166,8 +183,8 @@ void App::CreatePipeline(void)
     const auto& vertexShaderCode = Utils::ReadFile("./shaders/simple.vert.spv");
     const auto& fragmentShaderCode = Utils::ReadFile("./shaders/simple.frag.spv");
 
-    VK::Shader vertexShader { p_wsi->GetDevice()->GetHandle(), vertexShaderCode };
-    VK::Shader fragmentShader { p_wsi->GetDevice()->GetHandle(), fragmentShaderCode };
+    VK::Shader vertexShader { DEVICE->GetHandle(), vertexShaderCode };
+    VK::Shader fragmentShader { DEVICE->GetHandle(), fragmentShaderCode };
 
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
@@ -247,15 +264,15 @@ void App::CreatePipeline(void)
     VkViewport viewport {
         .x { 0.0f },
         .y { 0.0f },
-        .width { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().width) },
-        .height { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().height) },
+        .width { static_cast<float>(SWAPCHAIN->GetExtent().width) },
+        .height { static_cast<float>(SWAPCHAIN->GetExtent().height) },
         .minDepth { 0.0f },
         .maxDepth { 1.0f }
     };
 
     VkRect2D scissor {
         .offset { 0, 0 },
-        .extent { p_wsi->GetSwapchain()->GetExtent() }
+        .extent { SWAPCHAIN->GetExtent() }
     };
 
     VkPipelineViewportStateCreateInfo viewportStateCreateInfo {
@@ -333,17 +350,19 @@ void App::CreatePipeline(void)
         .blendConstants { 0.0f, 0.0f, 0.0f, 0.0f }
     };
 
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts { descriptorSetLayout };
+
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .setLayoutCount { 1 },
-        .pSetLayouts { &descriptorSetLayout },
+        .setLayoutCount { static_cast<uint32_t>(descriptorSetLayouts.size()) },
+        .pSetLayouts { descriptorSetLayouts.data() },
         .pushConstantRangeCount { 0 },
         .pPushConstantRanges { nullptr },
     };
 
-    CHECK_VK(vkCreatePipelineLayout(p_wsi->GetDevice()->GetHandle(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout.");
+    CHECK_VK(vkCreatePipelineLayout(DEVICE->GetHandle(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout.");
 
     VkGraphicsPipelineCreateInfo pipelineInfo {
         .sType { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO },
@@ -367,7 +386,7 @@ void App::CreatePipeline(void)
         .basePipelineIndex {}
     };
 
-    CHECK_VK(vkCreateGraphicsPipelines(p_wsi->GetDevice()->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create pipeline");
+    CHECK_VK(vkCreateGraphicsPipelines(DEVICE->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create pipeline");
 }
 
 void App::CreateCommandPool(void)
@@ -376,13 +395,13 @@ void App::CreateCommandPool(void)
         .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
         .pNext { nullptr },
         .flags { VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT },
-        .queueFamilyIndex { p_wsi->GetDevice()->GetGraphicQueueFamilyIndex() }
+        .queueFamilyIndex { DEVICE->GetGraphicQueueFamilyIndex() }
     };
 
-    CHECK_VK(vkCreateCommandPool(p_wsi->GetDevice()->GetHandle(), &commandPoolCreateInfo, nullptr, &commandPool), "Failed to create command pool");
+    CHECK_VK(vkCreateCommandPool(DEVICE->GetHandle(), &commandPoolCreateInfo, nullptr, &commandPool), "Failed to create command pool");
 }
 
-void App::CreateCommandBuffer(void)
+void App::CreateCommandBuffer()
 {
     VkCommandBufferAllocateInfo allocInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
@@ -392,7 +411,9 @@ void App::CreateCommandBuffer(void)
         .commandBufferCount { 1 },
     };
 
-    CHECK_VK(vkAllocateCommandBuffers(p_wsi->GetDevice()->GetHandle(), &allocInfo, &commandBuffer), "Failed to create command bufffer.");
+    for (uint32_t i = 0; i < MAX_FRAME; i++) {
+        CHECK_VK(vkAllocateCommandBuffers(DEVICE->GetHandle(), &allocInfo, &m_frameData[i].commandBuffer), "Failed to create command bufffer.");
+    }
 }
 
 void App::CreateSyncObjects(void)
@@ -409,9 +430,11 @@ void App::CreateSyncObjects(void)
         .flags { VK_FENCE_CREATE_SIGNALED_BIT }
     };
 
-    CHECK_VK(vkCreateSemaphore(p_wsi->GetDevice()->GetHandle(), &semaphoreInfo, nullptr, &imageAvailableSemaphore), "");
-    CHECK_VK(vkCreateSemaphore(p_wsi->GetDevice()->GetHandle(), &semaphoreInfo, nullptr, &renderFinishedSemaphore), "");
-    CHECK_VK(vkCreateFence(p_wsi->GetDevice()->GetHandle(), &fenceInfo, nullptr, &inFlightFence), "");
+    for (uint32_t i = 0; i < MAX_FRAME; i++) {
+        CHECK_VK(vkCreateSemaphore(DEVICE->GetHandle(), &semaphoreInfo, nullptr, &m_frameData[i].imageAvailableSemaphore), "");
+        CHECK_VK(vkCreateSemaphore(DEVICE->GetHandle(), &semaphoreInfo, nullptr, &m_frameData[i].renderFinishedSemaphore), "");
+        CHECK_VK(vkCreateFence(DEVICE->GetHandle(), &fenceInfo, nullptr, &m_frameData[i].inFlightFence), "");
+    }
 }
 
 void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -427,7 +450,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
 
     VkRect2D renderArea {
         .offset { 0, 0 },
-        .extent { p_wsi->GetSwapchain()->GetExtent() }
+        .extent { SWAPCHAIN->GetExtent() }
     };
 
     VkClearValue clearColor = { { { 0.0f, 0.0f, 0.0f, 1.0f } } };
@@ -436,7 +459,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
         .sType { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO },
         .pNext { nullptr },
         .renderPass { renderPass },
-        .framebuffer { p_wsi->GetSwapchain()->GetFrameBuffer(imageIndex) },
+        .framebuffer { SWAPCHAIN->GetFrameBuffer(imageIndex) },
         .renderArea { renderArea },
         .clearValueCount { 1 },
         .pClearValues { &clearColor }
@@ -449,30 +472,21 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     VkViewport viewport {
         .x { 0.0f },
         .y { 0.0f },
-        .width { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().width) },
-        .height { static_cast<float>(p_wsi->GetSwapchain()->GetExtent().height) },
+        .width { static_cast<float>(SWAPCHAIN->GetExtent().width) },
+        .height { static_cast<float>(SWAPCHAIN->GetExtent().height) },
         .minDepth { 0.0f },
         .maxDepth { 1.0f }
     };
 
     VkRect2D scissor {
         .offset { 0, 0 },
-        .extent { p_wsi->GetSwapchain()->GetExtent() }
+        .extent { SWAPCHAIN->GetExtent() }
     };
 
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    /**/
-    GlobalUniformData ubo {
-        .view { glm::mat4(1.0f) },
-        .proj { glm::mat4(1.0f) }
-    };
-
-    p_wsi->GetDevice()->CopyDataToDevice(globalUBO.allocation, &ubo, sizeof(GlobalUniformData));
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[0], 0, nullptr);
-    // memcpy(globalUBO.allocation->(), &ubo, sizeof(GlobalUniformData));
-    /**/
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &CURRENT_FRAME.descriptorSets[0], 0, nullptr);
 
     m_mesh->Draw(commandBuffer);
 
@@ -492,7 +506,7 @@ void App::CreateMesh(void)
 
     std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 
-    m_mesh = new Mesh { p_wsi->GetDevice(), vertices, indices };
+    m_mesh = new Mesh { DEVICE, vertices, indices };
 }
 
 void App::CreateUniformBuffer(void)
@@ -501,78 +515,110 @@ void App::CreateUniformBuffer(void)
     VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    globalUBO = p_wsi->GetDevice()->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
+    for (uint32_t i = 0; i < MAX_FRAME; i++) {
+        m_frameData[i].globalUBO = DEVICE->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
+    }
 }
 
 void App::CreateDescriptorPool(void)
 {
-    VkDescriptorPoolSize poolSize {
-        .type { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
-        .descriptorCount { 1 }
+    std::vector<VkDescriptorPoolSize> pools {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAME },
     };
 
     VkDescriptorPoolCreateInfo poolInfo {
         .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .maxSets { 1 },
-        .poolSizeCount { 1 },
-        .pPoolSizes { &poolSize }
+        .maxSets { 1 * MAX_FRAME },
+        .poolSizeCount { static_cast<uint32_t>(pools.size()) },
+        .pPoolSizes { pools.data() }
     };
 
-    CHECK_VK(vkCreateDescriptorPool(p_wsi->GetDevice()->GetHandle(), &poolInfo, nullptr, &descriptorPool), "Failed to create descriptor pool.");
+    CHECK_VK(vkCreateDescriptorPool(DEVICE->GetHandle(), &poolInfo, nullptr, &descriptorPool), "Failed to create descriptor pool.");
 }
 
 void App::CreateDescriptorSets(void)
 {
-    descriptorSets.resize(1);
-    std::vector<VkDescriptorSetLayout> layouts(1, descriptorSetLayout);
-
     VkDescriptorSetAllocateInfo allocInfo {
         .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO },
         .pNext {},
         .descriptorPool { descriptorPool },
         .descriptorSetCount { 1 },
-        .pSetLayouts { layouts.data() }
+        .pSetLayouts { &descriptorSetLayout }
     };
 
-    CHECK_VK(vkAllocateDescriptorSets(p_wsi->GetDevice()->GetHandle(), &allocInfo, descriptorSets.data()), "Failed to allocate descriptor set.");
+    for (uint32_t i = 0; i < MAX_FRAME; i++) {
+        m_frameData[i].descriptorSets.resize(1);
+        CHECK_VK(vkAllocateDescriptorSets(DEVICE->GetHandle(), &allocInfo, m_frameData[i].descriptorSets.data()), "Failed to allocate descriptor set.");
 
-    VkDescriptorBufferInfo bufferInfo {
-        .buffer { globalUBO.handle },
-        .offset {},
-        .range { sizeof(GlobalUniformData) }
-    };
+        VkDescriptorBufferInfo binding0 {
+            .buffer { m_mesh->GetUniformBuffer() },
+            .offset {},
+            .range { sizeof(MeshUniformData) }
+        };
 
-    VkWriteDescriptorSet descriptorWrite {
-        .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
-        .pNext { nullptr },
-        .dstSet { descriptorSets[0] },
-        .dstBinding {},
-        .dstArrayElement {},
-        .descriptorCount { 1 },
-        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
-        .pImageInfo {},
-        .pBufferInfo { &bufferInfo },
-        .pTexelBufferView {}
-    };
+        VkDescriptorBufferInfo binding1 {
+            .buffer { m_frameData[i].globalUBO.handle },
+            .offset {},
+            .range { sizeof(GlobalUniformData) }
+        };
 
-    vkUpdateDescriptorSets(p_wsi->GetDevice()->GetHandle(), 1, &descriptorWrite, 0, nullptr);
+        VkWriteDescriptorSet write0 {
+            .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
+            .pNext { nullptr },
+            .dstSet { m_frameData[i].descriptorSets[0] },
+            .dstBinding { 0 },
+            .dstArrayElement {},
+            .descriptorCount { 1 },
+            .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+            .pImageInfo {},
+            .pBufferInfo { &binding0 },
+            .pTexelBufferView {}
+        };
+
+        VkWriteDescriptorSet write1 {
+            .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
+            .pNext { nullptr },
+            .dstSet { m_frameData[i].descriptorSets[0] },
+            .dstBinding { 1 },
+            .dstArrayElement {},
+            .descriptorCount { 1 },
+            .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+            .pImageInfo {},
+            .pBufferInfo { &binding1 },
+            .pTexelBufferView {}
+        };
+
+        std::vector<VkWriteDescriptorSet> writes { write0, write1 };
+
+        vkUpdateDescriptorSets(DEVICE->GetHandle(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+    }
 }
 
-void App::Draw(void)
+void App::Update(void)
 {
-    vkWaitForFences(p_wsi->GetDevice()->GetHandle(), 1, &inFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(p_wsi->GetDevice()->GetHandle(), 1, &inFlightFence);
+    GlobalUniformData ubo {
+        .view { glm::mat4(1.0f) },
+        .proj { glm::mat4(1.0f) }
+    };
+
+    DEVICE->CopyDataToDevice(CURRENT_FRAME.globalUBO.allocation, &ubo, sizeof(GlobalUniformData));
+}
+
+void App::Render(void)
+{
+    vkWaitForFences(DEVICE->GetHandle(), 1, &CURRENT_FRAME.inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(DEVICE->GetHandle(), 1, &CURRENT_FRAME.inFlightFence);
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(p_wsi->GetDevice()->GetHandle(), p_wsi->GetSwapchain()->GetHandle(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    vkAcquireNextImageKHR(DEVICE->GetHandle(), SWAPCHAIN->GetHandle(), UINT64_MAX, CURRENT_FRAME.imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
-    vkResetCommandBuffer(commandBuffer, 0);
-    recordCommandBuffer(commandBuffer, imageIndex);
+    vkResetCommandBuffer(CURRENT_FRAME.commandBuffer, 0);
+    recordCommandBuffer(CURRENT_FRAME.commandBuffer, imageIndex);
 
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+    VkSemaphore waitSemaphores[] = { CURRENT_FRAME.imageAvailableSemaphore };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+    VkSemaphore signalSemaphores[] = { CURRENT_FRAME.renderFinishedSemaphore };
 
     VkSubmitInfo submitInfo {
         .sType { VK_STRUCTURE_TYPE_SUBMIT_INFO },
@@ -581,14 +627,14 @@ void App::Draw(void)
         .pWaitSemaphores { waitSemaphores },
         .pWaitDstStageMask { waitStages },
         .commandBufferCount { 1 },
-        .pCommandBuffers { &commandBuffer },
+        .pCommandBuffers { &CURRENT_FRAME.commandBuffer },
         .signalSemaphoreCount { 1 },
         .pSignalSemaphores { signalSemaphores }
     };
 
-    CHECK_VK(vkQueueSubmit(p_wsi->GetDevice()->GetGrahpicsQueue(), 1, &submitInfo, inFlightFence), "Failed to submit command buffer.");
+    CHECK_VK(vkQueueSubmit(DEVICE->GetGrahpicsQueue(), 1, &submitInfo, CURRENT_FRAME.inFlightFence), "Failed to submit command buffer.");
 
-    VkSwapchainKHR swapChains[] = { p_wsi->GetSwapchain()->GetHandle() };
+    VkSwapchainKHR swapChains[] = { SWAPCHAIN->GetHandle() };
 
     VkPresentInfoKHR presentInfo {
         .sType { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR },
@@ -601,5 +647,7 @@ void App::Draw(void)
         .pResults { nullptr },
     };
 
-    CHECK_VK(vkQueuePresentKHR(p_wsi->GetDevice()->GetPresentQueue(), &presentInfo), "Failed to present image.");
+    CHECK_VK(vkQueuePresentKHR(DEVICE->GetPresentQueue(), &presentInfo), "Failed to present image.");
+
+    m_currentFrame = (m_currentFrame + 1) % MAX_FRAME;
 }
