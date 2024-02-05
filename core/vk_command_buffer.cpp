@@ -7,6 +7,31 @@ VK::CommandBuffer::~CommandBuffer()
     Free();
 }
 
+VK::CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept
+    : m_handle { other.m_handle }
+    , m_device { other.m_device }
+    , m_commandPool { other.m_commandPool }
+{
+    other.m_handle = VK_NULL_HANDLE;
+    other.m_commandPool = VK_NULL_HANDLE;
+    other.m_device = VK_NULL_HANDLE;
+}
+
+VK::CommandBuffer& VK::CommandBuffer::operator=(CommandBuffer&& other) noexcept
+{
+    if (this != &other) {
+        m_handle = other.m_handle;
+        m_device = other.m_device;
+        m_commandPool = other.m_commandPool;
+
+        other.m_handle = VK_NULL_HANDLE;
+        other.m_commandPool = VK_NULL_HANDLE;
+        other.m_device = VK_NULL_HANDLE;
+    }
+
+    return *this;
+}
+
 void VK::CommandBuffer::Initialize(VkDevice device, VkCommandPool commandPool)
 {
     assert(m_handle == VK_NULL_HANDLE && device != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE);

@@ -6,11 +6,11 @@ class CommandBuffer;
 class CommandPool {
 public:
     CommandPool() = default;
-    CommandPool(const CommandPool&) = default;
-    CommandPool(CommandPool&&) = default;
     ~CommandPool();
-    CommandPool& operator=(const CommandPool&) = default;
-    CommandPool& operator=(CommandPool&&) = default;
+    CommandPool(const CommandPool&) = delete;
+    CommandPool& operator=(const CommandPool&) = delete;
+    CommandPool(CommandPool&&) noexcept;
+    CommandPool& operator=(CommandPool&&) noexcept;
 
 public:
     void Initialize(VkDevice device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = 0);

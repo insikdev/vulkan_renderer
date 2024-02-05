@@ -4,11 +4,11 @@ namespace VK {
 class CommandBuffer {
 public:
     CommandBuffer() = default;
-    CommandBuffer(const CommandBuffer&) = default;
-    CommandBuffer(CommandBuffer&&) = default;
     ~CommandBuffer();
-    CommandBuffer& operator=(const CommandBuffer&) = default;
-    CommandBuffer& operator=(CommandBuffer&&) = default;
+    CommandBuffer(const CommandBuffer&) = delete;
+    CommandBuffer(CommandBuffer&&) noexcept;
+    CommandBuffer& operator=(const CommandBuffer&) = delete;
+    CommandBuffer& operator=(CommandBuffer&&) noexcept;
 
 public:
     void Initialize(VkDevice device, VkCommandPool commandPool);

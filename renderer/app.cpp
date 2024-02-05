@@ -12,6 +12,7 @@ App::App(uint32_t width, uint32_t height)
     : m_width { width }
     , m_height { height }
 {
+    m_frameData.resize(2);
     CreateGLFW();
     CreateWSI();
     CreateMesh();
@@ -42,14 +43,14 @@ App::~App()
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
         DEVICE->DestroyBuffer(m_frameData[i].globalUBO);
-        m_frameData[i].commandBuffer.reset();
+        m_frameData[i].commandBuffer.Free();
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].renderFinishedSemaphore, nullptr);
         vkDestroyFence(DEVICE->GetHandle(), m_frameData[i].inFlightFence, nullptr);
     }
 
     vkDestroyDescriptorPool(DEVICE->GetHandle(), descriptorPool, nullptr);
-    delete commandPool;
+    commandPool.Destroy();
     vkDestroyDescriptorSetLayout(DEVICE->GetHandle(), descriptorSetLayout, nullptr);
     vkDestroyPipeline(DEVICE->GetHandle(), graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(DEVICE->GetHandle(), pipelineLayout, nullptr);
@@ -437,14 +438,13 @@ void App::CreatePipeline(void)
 
 void App::CreateCommandPool(void)
 {
-    commandPool = new VK::CommandPool {};
-    commandPool->Initialize(DEVICE->GetHandle(), DEVICE->GetGraphicQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    commandPool.Initialize(DEVICE->GetHandle(), DEVICE->GetGraphicQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
 void App::CreateCommandBuffer()
 {
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        m_frameData[i].commandBuffer = commandPool->AllocateCommandBufferUPTR();
+        m_frameData[i].commandBuffer = commandPool.AllocateCommandBuffer();
     }
 }
 
@@ -790,16 +790,18 @@ void App::Render(void)
     uint32_t imageIndex;
     vkAcquireNextImageKHR(DEVICE->GetHandle(), SWAPCHAIN->GetHandle(), UINT64_MAX, CURRENT_FRAME.imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
-    CURRENT_FRAME.commandBuffer->Reset();
-    CURRENT_FRAME.commandBuffer->BeginRecording();
-    recordCommandBuffer(CURRENT_FRAME.commandBuffer->GetHandle(), imageIndex);
-    CURRENT_FRAME.commandBuffer->EndRecording();
+    VK::CommandBuffer& commandBuffer = CURRENT_FRAME.commandBuffer;
+
+    commandBuffer.Reset();
+    commandBuffer.BeginRecording();
+    recordCommandBuffer(commandBuffer.GetHandle(), imageIndex);
+    commandBuffer.EndRecording();
 
     std::vector<VkSemaphore> waitSemaphores = { CURRENT_FRAME.imageAvailableSemaphore };
     VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     std::vector<VkSemaphore> signalSemaphores = { CURRENT_FRAME.renderFinishedSemaphore };
 
-    CURRENT_FRAME.commandBuffer->Submit(DEVICE->GetGrahpicsQueue(), waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence);
+    commandBuffer.Submit(DEVICE->GetGrahpicsQueue(), waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence);
 
     VkSwapchainKHR swapChains[] = { SWAPCHAIN->GetHandle() };
 

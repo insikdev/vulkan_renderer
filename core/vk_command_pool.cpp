@@ -8,6 +8,27 @@ VK::CommandPool::~CommandPool()
     Destroy();
 }
 
+VK::CommandPool::CommandPool(CommandPool&& other) noexcept
+    : m_device { other.m_device }
+    , m_handle { other.m_handle }
+{
+    other.m_device = VK_NULL_HANDLE;
+    other.m_handle = VK_NULL_HANDLE;
+}
+
+VK::CommandPool& VK::CommandPool::operator=(CommandPool&& other) noexcept
+{
+    if (this != &other) {
+        m_device = other.m_device;
+        m_handle = other.m_handle;
+
+        other.m_device = VK_NULL_HANDLE;
+        other.m_handle = VK_NULL_HANDLE;
+    }
+
+    return *this;
+}
+
 void VK::CommandPool::Initialize(VkDevice device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
 {
     assert(m_handle == VK_NULL_HANDLE && device != VK_NULL_HANDLE);

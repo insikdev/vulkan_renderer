@@ -45,12 +45,11 @@ private:
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     VkDescriptorPool descriptorPool;
-    // VkCommandPool commandPool;
-    VK::CommandPool* commandPool;
+    VK::CommandPool commandPool;
 
 private:
-    const uint32_t MAX_FRAME = 3;
-    std::vector<FrameData> m_frameData { MAX_FRAME };
+    uint32_t MAX_FRAME = 2;
+    std::vector<FrameData> m_frameData;
     uint32_t m_currentFrame {};
     Mesh* m_mesh;
     VK::Image texture;
