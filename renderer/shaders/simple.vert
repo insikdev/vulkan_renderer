@@ -1,6 +1,6 @@
 #version 450
 
-layout(location = 0) in vec2 inPos;
+layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec2 inTexCoord;
 
@@ -20,7 +20,7 @@ layout(set = 0, binding = 2) uniform sampler2D texSampler;
 
 
 void main() {
-    gl_Position = globalUBO.proj * globalUBO.view * modelUBO.world * vec4(inPos, 0.0, 1.0);
+    gl_Position = globalUBO.proj * globalUBO.view * modelUBO.world * vec4(inPos, 1.0);
     fragTexCoord = inTexCoord;
     fragColor = inColor;
 }

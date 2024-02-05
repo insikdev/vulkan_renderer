@@ -9,7 +9,7 @@ public:
     ~Swapchain();
 
 public:
-    void CreateFrameBuffers(VkRenderPass renderPass);
+    void CreateFrameBuffers(VkRenderPass renderPass, VkImageView depthImageView);
 
 public: // getter
     VkSwapchainKHR GetHandle(void) const { return m_swapchain; }

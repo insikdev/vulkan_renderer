@@ -28,20 +28,20 @@ VK::Swapchain::~Swapchain()
     vkDestroySwapchainKHR(p_device->GetHandle(), m_swapchain, nullptr);
 }
 
-void VK::Swapchain::CreateFrameBuffers(VkRenderPass renderPass)
+void VK::Swapchain::CreateFrameBuffers(VkRenderPass renderPass, VkImageView depthImageView)
 {
     m_framebuffers.resize(m_imageViews.size());
 
     for (size_t i = 0; i < m_imageViews.size(); i++) {
-        VkImageView attachments[] = { m_imageViews[i] };
+        std::vector<VkImageView> attachments { m_imageViews[i], depthImageView };
 
         VkFramebufferCreateInfo framebufferInfo {
             .sType { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO },
             .pNext { nullptr },
             .flags {},
             .renderPass { renderPass },
-            .attachmentCount { 1 },
-            .pAttachments { attachments },
+            .attachmentCount { static_cast<uint32_t>(attachments.size()) },
+            .pAttachments { attachments.data() },
             .width { m_capabilities.currentExtent.width },
             .height { m_capabilities.currentExtent.height },
             .layers { 1 },
@@ -138,6 +138,6 @@ void VK::Swapchain::CreateImageViews(void)
     m_imageViews.resize(m_images.size());
 
     for (size_t i = 0; i < m_images.size(); i++) {
-        m_imageViews[i] = p_device->CreateImageView(m_images[i], m_format.format);
+        m_imageViews[i] = p_device->CreateImageView(m_images[i], m_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }

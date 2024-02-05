@@ -24,6 +24,7 @@ private:
     void CreateUniformBuffer(void);
     void CreateDescriptorPool(void);
     void CreateDescriptorSets(void);
+    void CreateDepthResources(void);
     void CreateTexture(void);
 
     void CreateSampler();
@@ -54,4 +55,8 @@ private:
     VK::Image texture;
     VkImageView textureImageView;
     VkSampler textureSampler;
+
+private: // depth
+    VK::Image depthImage;
+    VkImageView depthImageView;
 };

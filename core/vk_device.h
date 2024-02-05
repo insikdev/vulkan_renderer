@@ -13,10 +13,10 @@ public:
     void DestroyBuffer(Buffer buffer);
     void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
     void CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size);
-    Image CreateImage(VkExtent3D extent);
+    Image CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
     void DestroyImage(Image image);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-    VkImageView CreateImageView(VkImage image, VkFormat format);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
     VkCommandBuffer BeginSingleTimeCommands(void);
     void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
