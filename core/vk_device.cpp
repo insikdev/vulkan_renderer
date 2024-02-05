@@ -2,6 +2,9 @@
 #include "vk_device.h"
 #include "query.h"
 #include "utils.h"
+#include "vk_command_pool.h"
+#include "vk_command_buffer.h"
+#include "check_vk.h"
 
 VK::Device::Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
     : m_instance { instance }
@@ -15,12 +18,13 @@ VK::Device::Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<
     SelectQueueIndex(surface);
     CreateLogicalDevice(requiredExtensions);
     CreateMemoryAllocator();
-    CreateCommandPool();
+
+    m_commandPool.Initialize(m_device, m_graphicsQueueFamilyIndex);
 }
 
 VK::Device::~Device()
 {
-    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+    m_commandPool.Destroy();
     vmaDestroyAllocator(m_allocator);
     vkDestroyDevice(m_device, nullptr);
 }
@@ -62,7 +66,8 @@ void VK::Device::DestroyBuffer(Buffer buffer)
 
 void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 {
-    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+    VK::CommandBuffer commandBuffer = m_commandPool.AllocateCommandBuffer();
+    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VkBufferCopy copyRegion {
         .srcOffset {},
@@ -70,9 +75,10 @@ void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
         .size { size }
     };
 
-    vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+    vkCmdCopyBuffer(commandBuffer.GetHandle(), src, dst, 1, &copyRegion);
 
-    EndSingleTimeCommands(commandBuffer);
+    commandBuffer.EndRecording();
+    commandBuffer.Submit(m_graphicsQueue);
 }
 
 void VK::Device::CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size)
@@ -127,7 +133,8 @@ void VK::Device::DestroyImage(Image image)
 
 void VK::Device::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
-    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+    VK::CommandBuffer commandBuffer = m_commandPool.AllocateCommandBuffer();
+    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VkImageSubresourceLayers imageSubresource {
         .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
@@ -145,9 +152,10 @@ void VK::Device::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t widt
         .imageExtent { width, height, 1 }
     };
 
-    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(commandBuffer.GetHandle(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-    EndSingleTimeCommands(commandBuffer);
+    commandBuffer.EndRecording();
+    commandBuffer.Submit(m_graphicsQueue);
 }
 
 VkImageView VK::Device::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
@@ -182,53 +190,6 @@ VkImageView VK::Device::CreateImageView(VkImage image, VkFormat format, VkImageA
     CHECK_VK(vkCreateImageView(m_device, &viewInfo, nullptr, &imageView), "Failed to create image view.");
 
     return imageView;
-}
-
-VkCommandBuffer VK::Device::BeginSingleTimeCommands(void)
-{
-    VkCommandBufferAllocateInfo allocInfo {
-        .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
-        .pNext { nullptr },
-        .commandPool { m_commandPool },
-        .level { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
-        .commandBufferCount { 1 }
-    };
-
-    VkCommandBuffer commandBuffer;
-    CHECK_VK(vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer), "");
-
-    VkCommandBufferBeginInfo beginInfo {
-        .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
-        .pNext { nullptr },
-        .flags {},
-        .pInheritanceInfo {}
-    };
-
-    CHECK_VK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "");
-
-    return commandBuffer;
-}
-
-void VK::Device::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
-{
-    CHECK_VK(vkEndCommandBuffer(commandBuffer), "");
-
-    VkSubmitInfo submitInfo {
-        .sType { VK_STRUCTURE_TYPE_SUBMIT_INFO },
-        .pNext { nullptr },
-        .waitSemaphoreCount {},
-        .pWaitSemaphores {},
-        .pWaitDstStageMask {},
-        .commandBufferCount { 1 },
-        .pCommandBuffers { &commandBuffer },
-        .signalSemaphoreCount {},
-        .pSignalSemaphores {}
-    };
-
-    CHECK_VK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE), "");
-    CHECK_VK(vkQueueWaitIdle(m_graphicsQueue), "");
-
-    vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
 }
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice()
@@ -335,17 +296,5 @@ void VK::Device::CreateMemoryAllocator()
         .instance { m_instance }
     };
 
-    CHECK_VK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator), "Failed to create memory allocator");
-}
-
-inline void VK::Device::CreateCommandPool(void)
-{
-    VkCommandPoolCreateInfo commandPoolCreateInfo {
-        .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
-        .pNext { nullptr },
-        .flags { VK_COMMAND_POOL_CREATE_TRANSIENT_BIT },
-        .queueFamilyIndex { m_graphicsQueueFamilyIndex }
-    };
-
-    CHECK_VK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_commandPool), "Failed to create command pool");
+    CHECK_VK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator), "Failed to create memory allocator.");
 }

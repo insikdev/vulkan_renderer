@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "vk_surface.h"
+#include "check_vk.h"
 
 #ifdef _WIN32
 VK::Surface::Surface(VkInstance instance, HINSTANCE hinstance, HWND hwnd)

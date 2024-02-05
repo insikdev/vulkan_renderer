@@ -9,4 +9,7 @@
 #include "vk_shader.h"
 #include "vk_resource.h"
 
+#include "vk_command_pool.h"
+#include "vk_command_buffer.h"
+
 #include "check_vk.h"

@@ -44,8 +44,9 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
-    VkCommandPool commandPool;
     VkDescriptorPool descriptorPool;
+    // VkCommandPool commandPool;
+    VK::CommandPool* commandPool;
 
 private:
     const uint32_t MAX_FRAME = 3;

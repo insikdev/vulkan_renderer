@@ -42,13 +42,14 @@ App::~App()
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
         DEVICE->DestroyBuffer(m_frameData[i].globalUBO);
+        m_frameData[i].commandBuffer.reset();
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].renderFinishedSemaphore, nullptr);
         vkDestroyFence(DEVICE->GetHandle(), m_frameData[i].inFlightFence, nullptr);
     }
 
     vkDestroyDescriptorPool(DEVICE->GetHandle(), descriptorPool, nullptr);
-    vkDestroyCommandPool(DEVICE->GetHandle(), commandPool, nullptr);
+    delete commandPool;
     vkDestroyDescriptorSetLayout(DEVICE->GetHandle(), descriptorSetLayout, nullptr);
     vkDestroyPipeline(DEVICE->GetHandle(), graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(DEVICE->GetHandle(), pipelineLayout, nullptr);
@@ -436,28 +437,14 @@ void App::CreatePipeline(void)
 
 void App::CreateCommandPool(void)
 {
-    VkCommandPoolCreateInfo commandPoolCreateInfo {
-        .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
-        .pNext { nullptr },
-        .flags { VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT },
-        .queueFamilyIndex { DEVICE->GetGraphicQueueFamilyIndex() }
-    };
-
-    CHECK_VK(vkCreateCommandPool(DEVICE->GetHandle(), &commandPoolCreateInfo, nullptr, &commandPool), "Failed to create command pool");
+    commandPool = new VK::CommandPool {};
+    commandPool->Initialize(DEVICE->GetHandle(), DEVICE->GetGraphicQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
 void App::CreateCommandBuffer()
 {
-    VkCommandBufferAllocateInfo allocInfo {
-        .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
-        .pNext { nullptr },
-        .commandPool { commandPool },
-        .level { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
-        .commandBufferCount { 1 },
-    };
-
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        CHECK_VK(vkAllocateCommandBuffers(DEVICE->GetHandle(), &allocInfo, &m_frameData[i].commandBuffer), "Failed to create command bufffer.");
+        m_frameData[i].commandBuffer = commandPool->AllocateCommandBufferUPTR();
     }
 }
 
@@ -484,15 +471,6 @@ void App::CreateSyncObjects(void)
 
 void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-    VkCommandBufferBeginInfo beginInfo {
-        .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
-        .pNext { nullptr },
-        .flags {},
-        .pInheritanceInfo {}
-    };
-
-    CHECK_VK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "Failed to begin recording command buffer.");
-
     VkRect2D renderArea {
         .offset { 0, 0 },
         .extent { SWAPCHAIN->GetExtent() }
@@ -536,8 +514,6 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     m_mesh->Draw(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
-
-    CHECK_VK(vkEndCommandBuffer(commandBuffer), "Failed to record command buffer.");
 }
 
 void App::CreateMesh(void)
@@ -744,7 +720,8 @@ void App::CreateSampler()
 
 void App::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-    VkCommandBuffer commandBuffer = DEVICE->BeginSingleTimeCommands();
+    VK::CommandBuffer commandBuffer = DEVICE->GetCommandPool().AllocateCommandBuffer();
+    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VkImageSubresourceRange subresourceRange {
         .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
@@ -786,9 +763,10 @@ void App::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout ol
         throw std::invalid_argument("unsupported layout transition!");
     }
 
-    vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(commandBuffer.GetHandle(), sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-    DEVICE->EndSingleTimeCommands(commandBuffer);
+    commandBuffer.EndRecording();
+    commandBuffer.Submit(DEVICE->GetGrahpicsQueue());
 }
 
 void App::Update(void)
@@ -812,34 +790,24 @@ void App::Render(void)
     uint32_t imageIndex;
     vkAcquireNextImageKHR(DEVICE->GetHandle(), SWAPCHAIN->GetHandle(), UINT64_MAX, CURRENT_FRAME.imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
-    vkResetCommandBuffer(CURRENT_FRAME.commandBuffer, 0);
-    recordCommandBuffer(CURRENT_FRAME.commandBuffer, imageIndex);
+    CURRENT_FRAME.commandBuffer->Reset();
+    CURRENT_FRAME.commandBuffer->BeginRecording();
+    recordCommandBuffer(CURRENT_FRAME.commandBuffer->GetHandle(), imageIndex);
+    CURRENT_FRAME.commandBuffer->EndRecording();
 
-    VkSemaphore waitSemaphores[] = { CURRENT_FRAME.imageAvailableSemaphore };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    VkSemaphore signalSemaphores[] = { CURRENT_FRAME.renderFinishedSemaphore };
+    std::vector<VkSemaphore> waitSemaphores = { CURRENT_FRAME.imageAvailableSemaphore };
+    VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    std::vector<VkSemaphore> signalSemaphores = { CURRENT_FRAME.renderFinishedSemaphore };
 
-    VkSubmitInfo submitInfo {
-        .sType { VK_STRUCTURE_TYPE_SUBMIT_INFO },
-        .pNext { nullptr },
-        .waitSemaphoreCount { 1 },
-        .pWaitSemaphores { waitSemaphores },
-        .pWaitDstStageMask { waitStages },
-        .commandBufferCount { 1 },
-        .pCommandBuffers { &CURRENT_FRAME.commandBuffer },
-        .signalSemaphoreCount { 1 },
-        .pSignalSemaphores { signalSemaphores }
-    };
-
-    CHECK_VK(vkQueueSubmit(DEVICE->GetGrahpicsQueue(), 1, &submitInfo, CURRENT_FRAME.inFlightFence), "Failed to submit command buffer.");
+    CURRENT_FRAME.commandBuffer->Submit(DEVICE->GetGrahpicsQueue(), waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence);
 
     VkSwapchainKHR swapChains[] = { SWAPCHAIN->GetHandle() };
 
     VkPresentInfoKHR presentInfo {
         .sType { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR },
         .pNext { nullptr },
-        .waitSemaphoreCount { 1 },
-        .pWaitSemaphores { signalSemaphores },
+        .waitSemaphoreCount { static_cast<uint32_t>(signalSemaphores.size()) },
+        .pWaitSemaphores { signalSemaphores.data() },
         .swapchainCount { 1 },
         .pSwapchains { swapChains },
         .pImageIndices { &imageIndex },

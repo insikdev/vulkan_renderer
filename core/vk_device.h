@@ -1,25 +1,28 @@
 #pragma once
 
 #include "vk_resource.h"
+#include "vk_command_pool.h"
+#include <vector>
 
 namespace VK {
+class CommandPool;
+
 class Device {
 public:
     Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions);
     ~Device();
 
-public:
+public: // buffer
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
     void DestroyBuffer(Buffer buffer);
     void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
     void CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size);
+
+public: // image
     Image CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
     void DestroyImage(Image image);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-
-    VkCommandBuffer BeginSingleTimeCommands(void);
-    void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 public: // getter
     VkPhysicalDevice GetPhysicalDeviceHandle(void) const { return m_physicalDevice; }
@@ -28,14 +31,13 @@ public: // getter
     uint32_t GetPresentQueueFamilyIndex(void) const { return m_presentQueueFamilyIndex; }
     VkQueue GetGrahpicsQueue(void) const { return m_graphicsQueue; }
     VkQueue GetPresentQueue(void) const { return m_presentQueue; }
-    VkCommandPool GetCommandPool(void) const { return m_commandPool; }
+    const VK::CommandPool& GetCommandPool(void) const { return m_commandPool; }
 
 private:
     VkPhysicalDevice SelectPhysicalDevice(void);
     void SelectQueueIndex(VkSurfaceKHR surface);
     void CreateLogicalDevice(const std::vector<const char*>& requiredExtensions);
     void CreateMemoryAllocator(void);
-    void CreateCommandPool(void);
 
 private:
     VkInstance m_instance;
@@ -48,6 +50,7 @@ private:
     VkQueue m_graphicsQueue { VK_NULL_HANDLE };
     VkQueue m_presentQueue { VK_NULL_HANDLE };
     VmaAllocator m_allocator { VK_NULL_HANDLE };
-    VkCommandPool m_commandPool { VK_NULL_HANDLE };
+
+    VK::CommandPool m_commandPool;
 };
 }

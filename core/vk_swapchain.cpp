@@ -2,6 +2,7 @@
 #include "vk_swapchain.h"
 #include "vk_device.h"
 #include "query.h"
+#include "check_vk.h"
 
 VK::Swapchain::Swapchain(Device* pDevice, VkSurfaceKHR surface)
     : p_device { pDevice }

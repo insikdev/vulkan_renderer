@@ -3,28 +3,50 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="vk_instance.h" />
-    <ClInclude Include="vk_core.h" />
     <ClInclude Include="vk_device.h" />
-    <ClInclude Include="query.h" />
     <ClInclude Include="vk_swapchain.h" />
     <ClInclude Include="vk_wsi.h" />
-    <ClInclude Include="utils.h" />
     <ClInclude Include="vk_shader.h" />
     <ClInclude Include="check_vk.h" />
     <ClInclude Include="vk_surface.h" />
     <ClInclude Include="vk_resource.h" />
+    <ClInclude Include="vk_command_pool.h" />
+    <ClInclude Include="vk_command_buffer.h" />
+    <ClInclude Include="query.h">
+      <Filter>private</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>private</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_core.h">
+      <Filter>public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="vk_instance.cpp" />
     <ClCompile Include="vk_device.cpp" />
-    <ClCompile Include="query.cpp" />
     <ClCompile Include="vk_swapchain.cpp" />
     <ClCompile Include="vk_wsi.cpp" />
-    <ClCompile Include="utils.cpp" />
     <ClCompile Include="vk_shader.cpp" />
     <ClCompile Include="check_vk.cpp" />
     <ClCompile Include="vk_surface.cpp" />
     <ClCompile Include="vk_resource.cpp" />
+    <ClCompile Include="vk_command_pool.cpp" />
+    <ClCompile Include="vk_command_buffer.cpp" />
+    <ClCompile Include="query.cpp">
+      <Filter>private</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>private</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="private">
+      <UniqueIdentifier>{72beb6ae-47d0-490c-ae31-29bc3db05848}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="public">
+      <UniqueIdentifier>{de800964-8b9f-4a49-855c-930b09d5fe8e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

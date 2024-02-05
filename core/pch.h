@@ -13,5 +13,4 @@
 #include <memory>
 #include <set>
 #include <cstdint>
-
-#include "check_vk.h"
+#include <cassert>

@@ -2,6 +2,7 @@
 #include "vk_instance.h"
 #include "query.h"
 #include "utils.h"
+#include "check_vk.h"
 
 VK::Instance::Instance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
 {

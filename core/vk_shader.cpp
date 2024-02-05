@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "vk_shader.h"
+#include "check_vk.h"
 
 VK::Shader::Shader(VkDevice device, const std::vector<char>& code)
     : m_device { device }

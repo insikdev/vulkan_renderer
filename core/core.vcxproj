@@ -154,6 +154,8 @@
     <ClInclude Include="check_vk.h" />
     <ClInclude Include="query.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="vk_command_buffer.h" />
+    <ClInclude Include="vk_command_pool.h" />
     <ClInclude Include="vk_device.h" />
     <ClInclude Include="vk_instance.h" />
     <ClInclude Include="pch.h" />
@@ -168,6 +170,8 @@
     <ClCompile Include="check_vk.cpp" />
     <ClCompile Include="query.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="vk_command_buffer.cpp" />
+    <ClCompile Include="vk_command_pool.cpp" />
     <ClCompile Include="vk_device.cpp" />
     <ClCompile Include="vk_instance.cpp" />
     <ClCompile Include="pch.cpp">
