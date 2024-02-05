@@ -5,9 +5,8 @@
 #include <stdexcept>
 #include <vector>
 #include <memory>
-#include <fstream>
-#include <iostream>
 #include <array>
+#include <iostream>
 
 // library
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -28,6 +27,7 @@
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 uv;
 };
 
 struct MeshUniformData {

@@ -7,4 +7,9 @@ struct Buffer {
     VkBuffer handle;
     VmaAllocation allocation;
 };
+
+struct Image {
+    VkImage handle;
+    VmaAllocation allocation;
+};
 }

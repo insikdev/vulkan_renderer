@@ -62,6 +62,130 @@ void VK::Device::DestroyBuffer(Buffer buffer)
 
 void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 {
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    VkBufferCopy copyRegion {
+        .srcOffset {},
+        .dstOffset {},
+        .size { size }
+    };
+
+    vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+
+    EndSingleTimeCommands(commandBuffer);
+}
+
+void VK::Device::CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size)
+{
+    void* mappedData;
+    vmaMapMemory(m_allocator, allocation, &mappedData);
+    memcpy(mappedData, pSrc, size);
+    vmaUnmapMemory(m_allocator, allocation);
+}
+
+VK::Image VK::Device::CreateImage(VkExtent3D extent)
+{
+    VkImageCreateInfo imageInfo {
+        .sType { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO },
+        .pNext { nullptr },
+        .flags {},
+        .imageType { VK_IMAGE_TYPE_2D },
+        .format { VK_FORMAT_R8G8B8A8_SRGB },
+        .extent { extent },
+        .mipLevels { 1 },
+        .arrayLayers { 1 },
+        .samples { VK_SAMPLE_COUNT_1_BIT },
+        .tiling { VK_IMAGE_TILING_OPTIMAL },
+        .usage { VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT },
+        .sharingMode { VK_SHARING_MODE_EXCLUSIVE },
+        .queueFamilyIndexCount {},
+        .pQueueFamilyIndices {},
+        .initialLayout { VK_IMAGE_LAYOUT_UNDEFINED },
+    };
+
+    VmaAllocationCreateInfo allocationCreateInfo = {
+        .flags {},
+        .usage { VMA_MEMORY_USAGE_AUTO },
+        .requiredFlags {},
+        .preferredFlags {},
+        .memoryTypeBits {},
+        .pool {},
+        .pUserData {},
+        .priority {}
+    };
+
+    VK::Image image {};
+    CHECK_VK(vmaCreateImage(m_allocator, &imageInfo, &allocationCreateInfo, &image.handle, &image.allocation, nullptr), "Failed to create image.");
+
+    return image;
+}
+
+void VK::Device::DestroyImage(Image image)
+{
+    vmaDestroyImage(m_allocator, image.handle, image.allocation);
+}
+
+void VK::Device::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    VkImageSubresourceLayers imageSubresource {
+        .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
+        .mipLevel { 0 },
+        .baseArrayLayer { 0 },
+        .layerCount { 1 }
+    };
+
+    VkBufferImageCopy region {
+        .bufferOffset { 0 },
+        .bufferRowLength { 0 },
+        .bufferImageHeight { 0 },
+        .imageSubresource { imageSubresource },
+        .imageOffset { 0, 0, 0 },
+        .imageExtent { width, height, 1 }
+    };
+
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    EndSingleTimeCommands(commandBuffer);
+}
+
+VkImageView VK::Device::CreateImageView(VkImage image, VkFormat format)
+{
+    VkComponentMapping components {
+        .r { VK_COMPONENT_SWIZZLE_IDENTITY },
+        .g { VK_COMPONENT_SWIZZLE_IDENTITY },
+        .b { VK_COMPONENT_SWIZZLE_IDENTITY },
+        .a { VK_COMPONENT_SWIZZLE_IDENTITY }
+    };
+
+    VkImageSubresourceRange subresourceRange {
+        .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
+        .baseMipLevel { 0 },
+        .levelCount { 1 },
+        .baseArrayLayer { 0 },
+        .layerCount { 1 },
+    };
+
+    VkImageViewCreateInfo viewInfo {
+        .sType { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO },
+        .pNext {},
+        .flags {},
+        .image { image },
+        .viewType { VK_IMAGE_VIEW_TYPE_2D },
+        .format { format },
+        .components { components },
+        .subresourceRange { subresourceRange },
+    };
+
+    VkImageView imageView;
+    CHECK_VK(vkCreateImageView(m_device, &viewInfo, nullptr, &imageView), "Failed to create image view.");
+
+    return imageView;
+}
+
+VkCommandBuffer VK::Device::BeginSingleTimeCommands(void)
+{
     VkCommandBufferAllocateInfo allocInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
         .pNext { nullptr },
@@ -76,19 +200,17 @@ void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
     VkCommandBufferBeginInfo beginInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
         .pNext { nullptr },
-        .flags { VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT },
+        .flags {},
         .pInheritanceInfo {}
     };
 
     CHECK_VK(vkBeginCommandBuffer(commandBuffer, &beginInfo), "");
 
-    VkBufferCopy copyRegion {
-        .srcOffset {},
-        .dstOffset {},
-        .size { size }
-    };
+    return commandBuffer;
+}
 
-    vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+void VK::Device::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
     CHECK_VK(vkEndCommandBuffer(commandBuffer), "");
 
     VkSubmitInfo submitInfo {
@@ -107,14 +229,6 @@ void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
     CHECK_VK(vkQueueWaitIdle(m_graphicsQueue), "");
 
     vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
-}
-
-void VK::Device::CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size)
-{
-    void* mappedData;
-    vmaMapMemory(m_allocator, allocation, &mappedData);
-    memcpy(mappedData, pSrc, size);
-    vmaUnmapMemory(m_allocator, allocation);
 }
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice()
@@ -136,7 +250,7 @@ VkPhysicalDevice VK::Device::SelectPhysicalDevice()
         VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-        if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+        if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.samplerAnisotropy) {
             return device;
         }
     }
@@ -190,7 +304,9 @@ void VK::Device::CreateLogicalDevice(const std::vector<const char*>& requiredExt
         queueCreateInfos.push_back(deviceQueueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures {};
+    VkPhysicalDeviceFeatures deviceFeatures {
+        .samplerAnisotropy { VK_TRUE }
+    };
 
     VkDeviceCreateInfo deviceCreateInfo {
         .sType { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO },

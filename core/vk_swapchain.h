@@ -5,7 +5,7 @@ class Device;
 
 class Swapchain {
 public:
-    Swapchain(const Device* pDevice, VkSurfaceKHR surface);
+    Swapchain(Device* pDevice, VkSurfaceKHR surface);
     ~Swapchain();
 
 public:
@@ -25,7 +25,7 @@ private:
     void CreateImageViews(void);
 
 private:
-    const Device* p_device { nullptr };
+    Device* p_device { nullptr };
     VkSurfaceKHR m_surface { VK_NULL_HANDLE };
 
 private:

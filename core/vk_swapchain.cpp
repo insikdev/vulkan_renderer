@@ -3,7 +3,7 @@
 #include "vk_device.h"
 #include "query.h"
 
-VK::Swapchain::Swapchain(const Device* pDevice, VkSurfaceKHR surface)
+VK::Swapchain::Swapchain(Device* pDevice, VkSurfaceKHR surface)
     : p_device { pDevice }
     , m_surface { surface }
 {
@@ -138,32 +138,6 @@ void VK::Swapchain::CreateImageViews(void)
     m_imageViews.resize(m_images.size());
 
     for (size_t i = 0; i < m_images.size(); i++) {
-        VkComponentMapping components {
-            .r { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .g { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .b { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .a { VK_COMPONENT_SWIZZLE_IDENTITY }
-        };
-
-        VkImageSubresourceRange subresourceRange {
-            .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
-            .baseMipLevel { 0 },
-            .levelCount { 1 },
-            .baseArrayLayer { 0 },
-            .layerCount { 1 }
-        };
-
-        VkImageViewCreateInfo imageViewCreateinfo {
-            .sType { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO },
-            .pNext {},
-            .flags {},
-            .image { m_images[i] },
-            .viewType { VK_IMAGE_VIEW_TYPE_2D },
-            .format { m_format.format },
-            .components { components },
-            .subresourceRange { subresourceRange }
-        };
-
-        CHECK_VK(vkCreateImageView(p_device->GetHandle(), &imageViewCreateinfo, nullptr, &m_imageViews[i]), "Failed to create image view.");
+        m_imageViews[i] = p_device->CreateImageView(m_images[i], m_format.format);
     }
 }

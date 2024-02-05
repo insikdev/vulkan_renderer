@@ -1,4 +1,6 @@
 #include "pch.h"
+#include <fstream>
+#include <iostream>
 #include "utils.h"
 
 std::vector<char> Utils::ReadFile(const std::string& filename)
