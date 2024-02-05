@@ -2,15 +2,20 @@
 
 #include "vk_resource.h"
 #include "vk_command_pool.h"
-#include <vector>
 
 namespace VK {
-class CommandPool;
-
 class Device {
 public:
-    Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions);
+    Device() = default;
     ~Device();
+    Device(const Device&) = delete;
+    Device& operator=(const Device&) = delete;
+    Device(Device&&) = delete;
+    Device& operator=(Device&&) = delete;
+
+public:
+    void Initialize(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions);
+    void Destroy(void);
 
 public: // buffer
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
@@ -37,7 +42,6 @@ private:
     VkPhysicalDevice SelectPhysicalDevice(void);
     void SelectQueueIndex(VkSurfaceKHR surface);
     void CreateLogicalDevice(const std::vector<const char*>& requiredExtensions);
-    void CreateMemoryAllocator(void);
 
 private:
     VkInstance m_instance;
@@ -49,8 +53,8 @@ private:
     uint32_t m_presentQueueFamilyIndex { UINT32_MAX };
     VkQueue m_graphicsQueue { VK_NULL_HANDLE };
     VkQueue m_presentQueue { VK_NULL_HANDLE };
-    VmaAllocator m_allocator { VK_NULL_HANDLE };
 
-    VK::CommandPool m_commandPool;
+    VK::CommandPool m_commandPool {};
+    MemoryAllocator m_allocator {};
 };
 }

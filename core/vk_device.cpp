@@ -2,13 +2,20 @@
 #include "vk_device.h"
 #include "query.h"
 #include "utils.h"
-#include "vk_command_pool.h"
 #include "vk_command_buffer.h"
 #include "check_vk.h"
 
-VK::Device::Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
-    : m_instance { instance }
+VK::Device::~Device()
 {
+    Destroy();
+}
+
+void VK::Device::Initialize(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
+{
+    assert(m_device == VK_NULL_HANDLE && instance != VK_NULL_HANDLE && surface != VK_NULL_HANDLE);
+
+    m_instance = instance;
+
     m_physicalDevice = SelectPhysicalDevice();
 
     if (Utils::CheckExtensionSupport(requiredExtensions, Query::GetDeviceExtensions(m_physicalDevice)) == false) {
@@ -17,16 +24,19 @@ VK::Device::Device(VkInstance instance, VkSurfaceKHR surface, const std::vector<
 
     SelectQueueIndex(surface);
     CreateLogicalDevice(requiredExtensions);
-    CreateMemoryAllocator();
 
+    m_allocator.Initialize(m_instance, m_physicalDevice, m_device);
     m_commandPool.Initialize(m_device, m_graphicsQueueFamilyIndex);
 }
 
-VK::Device::~Device()
+void VK::Device::Destroy(void)
 {
-    m_commandPool.Destroy();
-    vmaDestroyAllocator(m_allocator);
-    vkDestroyDevice(m_device, nullptr);
+    if (m_device != VK_NULL_HANDLE) {
+        m_commandPool.Destroy();
+        m_allocator.Destroy();
+        vkDestroyDevice(m_device, nullptr);
+        m_device = VK_NULL_HANDLE;
+    }
 }
 
 VK::Buffer VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
@@ -54,14 +64,14 @@ VK::Buffer VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
     };
 
     Buffer buffer {};
-    CHECK_VK(vmaCreateBuffer(m_allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer.handle, &buffer.allocation, nullptr), "Failed to create buffer.");
+    CHECK_VK(vmaCreateBuffer(m_allocator.GetHandle(), &bufferCreateInfo, &allocationCreateInfo, &buffer.handle, &buffer.allocation, nullptr), "Failed to create buffer.");
 
     return buffer;
 }
 
 void VK::Device::DestroyBuffer(Buffer buffer)
 {
-    vmaDestroyBuffer(m_allocator, buffer.handle, buffer.allocation);
+    vmaDestroyBuffer(m_allocator.GetHandle(), buffer.handle, buffer.allocation);
 }
 
 void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
@@ -84,9 +94,9 @@ void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 void VK::Device::CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size)
 {
     void* mappedData;
-    vmaMapMemory(m_allocator, allocation, &mappedData);
+    vmaMapMemory(m_allocator.GetHandle(), allocation, &mappedData);
     memcpy(mappedData, pSrc, size);
-    vmaUnmapMemory(m_allocator, allocation);
+    vmaUnmapMemory(m_allocator.GetHandle(), allocation);
 }
 
 VK::Image VK::Device::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
@@ -121,14 +131,14 @@ VK::Image VK::Device::CreateImage(uint32_t width, uint32_t height, VkFormat form
     };
 
     VK::Image image {};
-    CHECK_VK(vmaCreateImage(m_allocator, &imageInfo, &allocationCreateInfo, &image.handle, &image.allocation, nullptr), "Failed to create image.");
+    CHECK_VK(vmaCreateImage(m_allocator.GetHandle(), &imageInfo, &allocationCreateInfo, &image.handle, &image.allocation, nullptr), "Failed to create image.");
 
     return image;
 }
 
 void VK::Device::DestroyImage(Image image)
 {
-    vmaDestroyImage(m_allocator, image.handle, image.allocation);
+    vmaDestroyImage(m_allocator.GetHandle(), image.handle, image.allocation);
 }
 
 void VK::Device::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
@@ -286,15 +296,4 @@ void VK::Device::CreateLogicalDevice(const std::vector<const char*>& requiredExt
 
     vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
     vkGetDeviceQueue(m_device, m_presentQueueFamilyIndex, 0, &m_presentQueue);
-}
-
-void VK::Device::CreateMemoryAllocator()
-{
-    VmaAllocatorCreateInfo allocatorCreateInfo {
-        .physicalDevice { m_physicalDevice },
-        .device { m_device },
-        .instance { m_instance }
-    };
-
-    CHECK_VK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator), "Failed to create memory allocator.");
 }

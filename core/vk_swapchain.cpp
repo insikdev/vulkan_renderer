@@ -4,33 +4,45 @@
 #include "query.h"
 #include "check_vk.h"
 
-VK::Swapchain::Swapchain(Device* pDevice, VkSurfaceKHR surface)
-    : p_device { pDevice }
-    , m_surface { surface }
+VK::Swapchain::~Swapchain()
 {
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device->GetPhysicalDeviceHandle(), surface, &m_capabilities);
+    Destroy();
+}
 
+void VK::Swapchain::Initialize(Device* pDevice, VkSurfaceKHR surface)
+{
+    assert(m_handle == VK_NULL_HANDLE && pDevice != nullptr && surface != VK_NULL_HANDLE);
+
+    p_device = pDevice;
+    m_surface = surface;
+
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device->GetPhysicalDeviceHandle(), surface, &m_capabilities);
     m_format = SelectFormat();
     m_presentMode = SelectPresentMode();
     CreateSwapchain();
     CreateImageViews();
 }
 
-VK::Swapchain::~Swapchain()
+void VK::Swapchain::Destroy(void)
 {
-    for (auto framebuffer : m_framebuffers) {
-        vkDestroyFramebuffer(p_device->GetHandle(), framebuffer, nullptr);
-    }
+    if (m_handle != VK_NULL_HANDLE) {
+        for (auto framebuffer : m_framebuffers) {
+            vkDestroyFramebuffer(p_device->GetHandle(), framebuffer, nullptr);
+        }
 
-    for (auto imageView : m_imageViews) {
-        vkDestroyImageView(p_device->GetHandle(), imageView, nullptr);
-    }
+        for (auto imageView : m_imageViews) {
+            vkDestroyImageView(p_device->GetHandle(), imageView, nullptr);
+        }
 
-    vkDestroySwapchainKHR(p_device->GetHandle(), m_swapchain, nullptr);
+        vkDestroySwapchainKHR(p_device->GetHandle(), m_handle, nullptr);
+        m_handle = VK_NULL_HANDLE;
+    }
 }
 
 void VK::Swapchain::CreateFrameBuffers(VkRenderPass renderPass, VkImageView depthImageView)
 {
+    assert(m_handle != VK_NULL_HANDLE);
+
     m_framebuffers.resize(m_imageViews.size());
 
     for (size_t i = 0; i < m_imageViews.size(); i++) {
@@ -127,11 +139,11 @@ void VK::Swapchain::CreateSwapchain(void)
         swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
     }
 
-    CHECK_VK(vkCreateSwapchainKHR(p_device->GetHandle(), &swapchainCreateInfo, nullptr, &m_swapchain), "Failed to create swap chain.");
+    CHECK_VK(vkCreateSwapchainKHR(p_device->GetHandle(), &swapchainCreateInfo, nullptr, &m_handle), "Failed to create swap chain.");
 
-    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_swapchain, &imageCount, nullptr);
+    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_handle, &imageCount, nullptr);
     m_images.resize(imageCount);
-    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_swapchain, &imageCount, m_images.data());
+    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_handle, &imageCount, m_images.data());
 }
 
 void VK::Swapchain::CreateImageViews(void)

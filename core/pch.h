@@ -7,10 +7,8 @@
 
 #include <vulkan\vulkan.h>
 
-#include <stdexcept>
-#include <iostream>
+#include <cstdint>
+#include <cassert>
 #include <vector>
 #include <memory>
 #include <set>
-#include <cstdint>
-#include <cassert>

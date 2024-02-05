@@ -4,8 +4,15 @@
 #include "utils.h"
 #include "check_vk.h"
 
-VK::Instance::Instance(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
+VK::Instance::~Instance()
 {
+    Destroy();
+}
+
+void VK::Instance::Initialize(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
+{
+    assert(m_handle == VK_NULL_HANDLE);
+
     if (Utils::CheckLayerSupport(requiredLayers, Query::GetInstanceLayers()) == false) {
         throw std::runtime_error("Required layers are not supported.");
     }
@@ -35,10 +42,13 @@ VK::Instance::Instance(const std::vector<const char*>& requiredLayers, const std
         .ppEnabledExtensionNames { requiredExtensions.data() }
     };
 
-    CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance), "Failed to create instance.");
+    CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_handle), "Failed to create instance.");
 }
 
-VK::Instance::~Instance()
+void VK::Instance::Destroy(void)
 {
-    vkDestroyInstance(m_instance, nullptr);
+    if (m_handle != VK_NULL_HANDLE) {
+        vkDestroyInstance(m_handle, nullptr);
+        m_handle = VK_NULL_HANDLE;
+    }
 }

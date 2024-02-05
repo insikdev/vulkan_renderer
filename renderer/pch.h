@@ -40,7 +40,6 @@ struct GlobalUniformData {
 };
 
 struct FrameData {
-    // std::unique_ptr<VK::CommandBuffer> commandBuffer;
     VK::CommandBuffer commandBuffer;
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
