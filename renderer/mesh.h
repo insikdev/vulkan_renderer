@@ -11,7 +11,7 @@ public:
     void Draw(VkCommandBuffer commandBuffer);
 
 public: // getter
-    VkBuffer GetUniformBuffer(void) const { return m_uniformBuffer.handle; }
+    VkBuffer GetUniformBuffer(void) const { return m_uniformBuffer.GetHandle(); }
 
 private:
     void CreateVertexBuffer(const std::vector<Vertex>& vertices);

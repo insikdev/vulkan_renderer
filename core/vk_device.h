@@ -1,9 +1,12 @@
 #pragma once
 
-#include "vk_resource.h"
 #include "vk_command_pool.h"
+#include "vk_memory_allocator.h"
 
 namespace VK {
+class Instance;
+class Surface;
+
 class Device {
 public:
     Device() = default;
@@ -14,20 +17,8 @@ public:
     Device& operator=(Device&&) = delete;
 
 public:
-    void Initialize(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions);
+    void Initialize(const Instance* pInstance, const Surface* pSurface, const std::vector<const char*>& requiredExtensions);
     void Destroy(void);
-
-public: // buffer
-    Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
-    void DestroyBuffer(Buffer buffer);
-    void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
-    void CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size);
-
-public: // image
-    Image CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
-    void DestroyImage(Image image);
-    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
 public: // getter
     VkPhysicalDevice GetPhysicalDeviceHandle(void) const { return m_physicalDevice; }
@@ -36,7 +27,8 @@ public: // getter
     uint32_t GetPresentQueueFamilyIndex(void) const { return m_presentQueueFamilyIndex; }
     VkQueue GetGrahpicsQueue(void) const { return m_graphicsQueue; }
     VkQueue GetPresentQueue(void) const { return m_presentQueue; }
-    const VK::CommandPool& GetCommandPool(void) const { return m_commandPool; }
+    const CommandPool* GetCommandPool(void) const { return &m_commandPool; }
+    const MemoryAllocator* GetMemoryAllocator(void) const { return &m_allocator; }
 
 private:
     VkPhysicalDevice SelectPhysicalDevice(void);
@@ -44,7 +36,8 @@ private:
     void CreateLogicalDevice(const std::vector<const char*>& requiredExtensions);
 
 private:
-    VkInstance m_instance;
+    const Instance* p_instance { nullptr };
+    const Surface* p_surface { nullptr };
 
 private:
     VkPhysicalDevice m_physicalDevice { VK_NULL_HANDLE };
@@ -54,7 +47,7 @@ private:
     VkQueue m_graphicsQueue { VK_NULL_HANDLE };
     VkQueue m_presentQueue { VK_NULL_HANDLE };
 
-    VK::CommandPool m_commandPool {};
+    CommandPool m_commandPool {};
     MemoryAllocator m_allocator {};
 };
 }

@@ -48,15 +48,15 @@ private:
     VK::CommandPool commandPool;
 
 private:
-    uint32_t MAX_FRAME = 2;
-    std::vector<FrameData> m_frameData;
+    static const uint32_t MAX_FRAME = 2;
+    FrameData m_frameData[MAX_FRAME];
     uint32_t m_currentFrame {};
     Mesh* m_mesh;
     VK::Image texture;
-    VkImageView textureImageView;
+    VK::ImageView textureImageView;
     VkSampler textureSampler;
 
 private: // depth
     VK::Image depthImage;
-    VkImageView depthImageView;
+    VK::ImageView depthImageView;
 };

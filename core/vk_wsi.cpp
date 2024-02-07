@@ -2,12 +2,17 @@
 #include "vk_wsi.h"
 
 #ifdef _WIN32
-VK::WSI::WSI(const std::vector<const char*>& instanceLayers, const std::vector<const char*>& instanceExtensions, const std::vector<const char*>& deviceExtensions, HINSTANCE hinstance, HWND hwnd)
+VK::WSI::WSI(
+    const std::vector<const char*>& instanceLayers,
+    const std::vector<const char*>& instanceExtensions,
+    const std::vector<const char*>& deviceExtensions,
+    HINSTANCE hinstance,
+    HWND hwnd)
 {
     m_instance.Initialize(instanceLayers, instanceExtensions);
-    m_surface.Initialize(m_instance.GetHandle(), hinstance, hwnd);
-    m_device.Initialize(m_instance.GetHandle(), m_surface.GetHandle(), deviceExtensions);
-    m_swapchain.Initialize(&m_device, m_surface.GetHandle());
+    m_surface.Initialize(&m_instance, hinstance, hwnd);
+    m_device.Initialize(&m_instance, &m_surface, deviceExtensions);
+    m_swapchain.Initialize(&m_surface, &m_device);
 }
 #endif
 

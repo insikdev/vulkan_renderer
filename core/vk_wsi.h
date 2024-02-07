@@ -19,8 +19,8 @@ public:
 public:
     ~WSI();
     WSI(const WSI&) = delete;
-    WSI& operator=(const WSI&) = delete;
     WSI(WSI&&) = delete;
+    WSI& operator=(const WSI&) = delete;
     WSI& operator=(WSI&&) = delete;
 
 public: // getter

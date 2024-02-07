@@ -31,7 +31,7 @@ void VK::Instance::Initialize(const std::vector<const char*>& requiredLayers, co
         .apiVersion { VK_API_VERSION_1_0 }
     };
 
-    VkInstanceCreateInfo instanceCreateInfo {
+    VkInstanceCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
@@ -42,7 +42,7 @@ void VK::Instance::Initialize(const std::vector<const char*>& requiredLayers, co
         .ppEnabledExtensionNames { requiredExtensions.data() }
     };
 
-    CHECK_VK(vkCreateInstance(&instanceCreateInfo, nullptr, &m_handle), "Failed to create instance.");
+    CHECK_VK(vkCreateInstance(&createInfo, nullptr, &m_handle), "Failed to create instance.");
 }
 
 void VK::Instance::Destroy(void)

@@ -9,7 +9,6 @@
     <ClInclude Include="vk_shader.h" />
     <ClInclude Include="check_vk.h" />
     <ClInclude Include="vk_surface.h" />
-    <ClInclude Include="vk_resource.h" />
     <ClInclude Include="vk_command_pool.h" />
     <ClInclude Include="vk_command_buffer.h" />
     <ClInclude Include="query.h">
@@ -21,6 +20,10 @@
     <ClInclude Include="vk_core.h">
       <Filter>public</Filter>
     </ClInclude>
+    <ClInclude Include="vk_memory_allocator.h" />
+    <ClInclude Include="vk_buffer.h" />
+    <ClInclude Include="vk_image.h" />
+    <ClInclude Include="vk_image_view.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -31,7 +34,6 @@
     <ClCompile Include="vk_shader.cpp" />
     <ClCompile Include="check_vk.cpp" />
     <ClCompile Include="vk_surface.cpp" />
-    <ClCompile Include="vk_resource.cpp" />
     <ClCompile Include="vk_command_pool.cpp" />
     <ClCompile Include="vk_command_buffer.cpp" />
     <ClCompile Include="query.cpp">
@@ -40,6 +42,10 @@
     <ClCompile Include="utils.cpp">
       <Filter>private</Filter>
     </ClCompile>
+    <ClCompile Include="vk_memory_allocator.cpp" />
+    <ClCompile Include="vk_buffer.cpp" />
+    <ClCompile Include="vk_image.cpp" />
+    <ClCompile Include="vk_image_view.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="private">

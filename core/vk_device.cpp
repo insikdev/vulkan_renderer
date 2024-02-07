@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "vk_device.h"
+#include "vk_instance.h"
+#include "vk_surface.h"
 #include "query.h"
 #include "utils.h"
 #include "vk_command_buffer.h"
@@ -10,11 +12,14 @@ VK::Device::~Device()
     Destroy();
 }
 
-void VK::Device::Initialize(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
+void VK::Device::Initialize(const Instance* pInstance, const Surface* pSurface, const std::vector<const char*>& requiredExtensions)
 {
-    assert(m_device == VK_NULL_HANDLE && instance != VK_NULL_HANDLE && surface != VK_NULL_HANDLE);
+    assert(m_device == VK_NULL_HANDLE && pInstance != VK_NULL_HANDLE && pSurface != VK_NULL_HANDLE);
 
-    m_instance = instance;
+    {
+        p_instance = pInstance;
+        p_surface = pSurface;
+    }
 
     m_physicalDevice = SelectPhysicalDevice();
 
@@ -22,11 +27,11 @@ void VK::Device::Initialize(VkInstance instance, VkSurfaceKHR surface, const std
         throw std::runtime_error("Required extensions are not supported.");
     }
 
-    SelectQueueIndex(surface);
+    SelectQueueIndex(p_surface->GetHandle());
     CreateLogicalDevice(requiredExtensions);
 
-    m_allocator.Initialize(m_instance, m_physicalDevice, m_device);
-    m_commandPool.Initialize(m_device, m_graphicsQueueFamilyIndex);
+    m_allocator.Initialize(p_instance, this);
+    m_commandPool.Initialize(this);
 }
 
 void VK::Device::Destroy(void)
@@ -36,175 +41,14 @@ void VK::Device::Destroy(void)
         m_allocator.Destroy();
         vkDestroyDevice(m_device, nullptr);
         m_device = VK_NULL_HANDLE;
+        p_instance = nullptr;
+        p_surface = nullptr;
     }
-}
-
-VK::Buffer VK::Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
-{
-    VkBufferCreateInfo bufferCreateInfo {
-        .sType { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO },
-        .pNext { nullptr },
-        .flags {},
-        .size { size },
-        .usage { usage },
-        .sharingMode {},
-        .queueFamilyIndexCount {},
-        .pQueueFamilyIndices {}
-    };
-
-    VmaAllocationCreateInfo allocationCreateInfo = {
-        .flags { allocationFlags },
-        .usage { VMA_MEMORY_USAGE_AUTO },
-        .requiredFlags {},
-        .preferredFlags {},
-        .memoryTypeBits {},
-        .pool {},
-        .pUserData {},
-        .priority {}
-    };
-
-    Buffer buffer {};
-    CHECK_VK(vmaCreateBuffer(m_allocator.GetHandle(), &bufferCreateInfo, &allocationCreateInfo, &buffer.handle, &buffer.allocation, nullptr), "Failed to create buffer.");
-
-    return buffer;
-}
-
-void VK::Device::DestroyBuffer(Buffer buffer)
-{
-    vmaDestroyBuffer(m_allocator.GetHandle(), buffer.handle, buffer.allocation);
-}
-
-void VK::Device::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
-{
-    VK::CommandBuffer commandBuffer = m_commandPool.AllocateCommandBuffer();
-    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VkBufferCopy copyRegion {
-        .srcOffset {},
-        .dstOffset {},
-        .size { size }
-    };
-
-    vkCmdCopyBuffer(commandBuffer.GetHandle(), src, dst, 1, &copyRegion);
-
-    commandBuffer.EndRecording();
-    commandBuffer.Submit(m_graphicsQueue);
-}
-
-void VK::Device::CopyDataToDevice(VmaAllocation allocation, void* pSrc, VkDeviceSize size)
-{
-    void* mappedData;
-    vmaMapMemory(m_allocator.GetHandle(), allocation, &mappedData);
-    memcpy(mappedData, pSrc, size);
-    vmaUnmapMemory(m_allocator.GetHandle(), allocation);
-}
-
-VK::Image VK::Device::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
-{
-    VkImageCreateInfo imageInfo {
-        .sType { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO },
-        .pNext { nullptr },
-        .flags {},
-        .imageType { VK_IMAGE_TYPE_2D },
-        .format { format },
-        .extent { width, height, 1 },
-        .mipLevels { 1 },
-        .arrayLayers { 1 },
-        .samples { VK_SAMPLE_COUNT_1_BIT },
-        .tiling { tiling },
-        .usage { usage },
-        .sharingMode { VK_SHARING_MODE_EXCLUSIVE },
-        .queueFamilyIndexCount {},
-        .pQueueFamilyIndices {},
-        .initialLayout { VK_IMAGE_LAYOUT_UNDEFINED },
-    };
-
-    VmaAllocationCreateInfo allocationCreateInfo = {
-        .flags {},
-        .usage { VMA_MEMORY_USAGE_AUTO },
-        .requiredFlags {},
-        .preferredFlags {},
-        .memoryTypeBits {},
-        .pool {},
-        .pUserData {},
-        .priority {}
-    };
-
-    VK::Image image {};
-    CHECK_VK(vmaCreateImage(m_allocator.GetHandle(), &imageInfo, &allocationCreateInfo, &image.handle, &image.allocation, nullptr), "Failed to create image.");
-
-    return image;
-}
-
-void VK::Device::DestroyImage(Image image)
-{
-    vmaDestroyImage(m_allocator.GetHandle(), image.handle, image.allocation);
-}
-
-void VK::Device::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
-{
-    VK::CommandBuffer commandBuffer = m_commandPool.AllocateCommandBuffer();
-    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VkImageSubresourceLayers imageSubresource {
-        .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
-        .mipLevel { 0 },
-        .baseArrayLayer { 0 },
-        .layerCount { 1 }
-    };
-
-    VkBufferImageCopy region {
-        .bufferOffset { 0 },
-        .bufferRowLength { 0 },
-        .bufferImageHeight { 0 },
-        .imageSubresource { imageSubresource },
-        .imageOffset { 0, 0, 0 },
-        .imageExtent { width, height, 1 }
-    };
-
-    vkCmdCopyBufferToImage(commandBuffer.GetHandle(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    commandBuffer.EndRecording();
-    commandBuffer.Submit(m_graphicsQueue);
-}
-
-VkImageView VK::Device::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
-{
-    VkComponentMapping components {
-        .r { VK_COMPONENT_SWIZZLE_IDENTITY },
-        .g { VK_COMPONENT_SWIZZLE_IDENTITY },
-        .b { VK_COMPONENT_SWIZZLE_IDENTITY },
-        .a { VK_COMPONENT_SWIZZLE_IDENTITY }
-    };
-
-    VkImageSubresourceRange subresourceRange {
-        .aspectMask { aspectFlags },
-        .baseMipLevel { 0 },
-        .levelCount { 1 },
-        .baseArrayLayer { 0 },
-        .layerCount { 1 },
-    };
-
-    VkImageViewCreateInfo viewInfo {
-        .sType { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO },
-        .pNext {},
-        .flags {},
-        .image { image },
-        .viewType { VK_IMAGE_VIEW_TYPE_2D },
-        .format { format },
-        .components { components },
-        .subresourceRange { subresourceRange },
-    };
-
-    VkImageView imageView;
-    CHECK_VK(vkCreateImageView(m_device, &viewInfo, nullptr, &imageView), "Failed to create image view.");
-
-    return imageView;
 }
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice()
 {
-    const auto& devices = Query::GetPhysicalDevices(m_instance);
+    const auto& devices = Query::GetPhysicalDevices(p_instance->GetHandle());
 
     if (devices.empty()) {
         throw std::runtime_error("Failed to find GPUs with Vulkan support.");

@@ -1,13 +1,13 @@
 #pragma once
-
+#include <vector>
 namespace VK {
 class Instance {
 public:
     Instance() = default;
     ~Instance();
     Instance(const Instance&) = delete;
-    Instance& operator=(const Instance&) = delete;
     Instance(Instance&&) = delete;
+    Instance& operator=(const Instance&) = delete;
     Instance& operator=(Instance&&) = delete;
 
 public:

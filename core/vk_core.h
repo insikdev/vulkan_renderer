@@ -7,9 +7,11 @@
 #include "vk_wsi.h"
 
 #include "vk_shader.h"
-#include "vk_resource.h"
 
 #include "vk_command_pool.h"
 #include "vk_command_buffer.h"
+
+#include "vk_buffer.h"
+#include "vk_image.h"
 
 #include "check_vk.h"

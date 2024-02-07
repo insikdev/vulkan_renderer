@@ -1,60 +1,66 @@
 #include "pch.h"
 #include "vk_command_buffer.h"
+#include "vk_device.h"
+#include "vk_command_pool.h"
 #include "check_vk.h"
 
 VK::CommandBuffer::~CommandBuffer()
 {
-    Free();
+    Destroy();
 }
 
 VK::CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept
     : m_handle { other.m_handle }
-    , m_device { other.m_device }
-    , m_commandPool { other.m_commandPool }
+    , p_device { other.p_device }
+    , p_commandPool { other.p_commandPool }
 {
     other.m_handle = VK_NULL_HANDLE;
-    other.m_commandPool = VK_NULL_HANDLE;
-    other.m_device = VK_NULL_HANDLE;
+    other.p_device = nullptr;
+    other.p_commandPool = nullptr;
 }
 
 VK::CommandBuffer& VK::CommandBuffer::operator=(CommandBuffer&& other) noexcept
 {
     if (this != &other) {
         m_handle = other.m_handle;
-        m_device = other.m_device;
-        m_commandPool = other.m_commandPool;
+        p_device = other.p_device;
+        p_commandPool = other.p_commandPool;
 
         other.m_handle = VK_NULL_HANDLE;
-        other.m_commandPool = VK_NULL_HANDLE;
-        other.m_device = VK_NULL_HANDLE;
+        other.p_device = nullptr;
+        other.p_commandPool = nullptr;
     }
 
     return *this;
 }
 
-void VK::CommandBuffer::Initialize(VkDevice device, VkCommandPool commandPool)
+void VK::CommandBuffer::Initialize(const Device* pDevice, const CommandPool* pCommandPool)
 {
-    assert(m_handle == VK_NULL_HANDLE && device != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE);
+    assert(m_handle == VK_NULL_HANDLE && pDevice != nullptr && pCommandPool != nullptr);
 
-    m_device = device;
-    m_commandPool = commandPool;
+    {
+        p_device = pDevice;
+        p_commandPool = pCommandPool;
+    }
 
     VkCommandBufferAllocateInfo allocInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
         .pNext { nullptr },
-        .commandPool { m_commandPool },
+        .commandPool { p_commandPool->GetHandle() },
         .level { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
         .commandBufferCount { 1 }
     };
 
-    CHECK_VK(vkAllocateCommandBuffers(device, &allocInfo, &m_handle), "");
+    CHECK_VK(vkAllocateCommandBuffers(p_device->GetHandle(), &allocInfo, &m_handle), "Failed to allocate command buffer.");
 }
 
-void VK::CommandBuffer::Free(void)
+void VK::CommandBuffer::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        vkFreeCommandBuffers(m_device, m_commandPool, 1, &m_handle);
+        vkFreeCommandBuffers(p_device->GetHandle(), p_commandPool->GetHandle(), 1, &m_handle);
         m_handle = VK_NULL_HANDLE;
+        p_device = nullptr;
+        p_commandPool = nullptr;
     }
 }
 

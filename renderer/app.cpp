@@ -12,18 +12,16 @@ App::App(uint32_t width, uint32_t height)
     : m_width { width }
     , m_height { height }
 {
-    m_frameData.resize(2);
     CreateGLFW();
     CreateWSI();
     CreateMesh();
     CreateDepthResources();
     CreateTexture();
-    textureImageView = DEVICE->CreateImageView(texture.handle, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     CreateSampler();
     CreateRenderPass();
     CreateDescriptorSetLayout();
     CreatePipeline();
-    SWAPCHAIN->CreateFrameBuffers(renderPass, depthImageView);
+    SWAPCHAIN->CreateFrameBuffers(renderPass, depthImageView.GetHandle());
     CreateCommandPool();
     CreateCommandBuffer();
     CreateSyncObjects();
@@ -36,14 +34,19 @@ App::~App()
 {
     delete m_mesh;
     vkDestroySampler(DEVICE->GetHandle(), textureSampler, nullptr);
-    vkDestroyImageView(DEVICE->GetHandle(), textureImageView, nullptr);
-    vkDestroyImageView(DEVICE->GetHandle(), depthImageView, nullptr);
-    DEVICE->DestroyImage(texture);
-    DEVICE->DestroyImage(depthImage);
+    // vkDestroyImageView(DEVICE->GetHandle(), textureImageView, nullptr);
+    textureImageView.Destroy();
+    // vkDestroyImageView(DEVICE->GetHandle(), depthImageView, nullptr);
+    depthImageView.Destroy();
+    texture.Destroy();
+    depthImage.Destroy();
+    // DEVICE->DestroyImage(texture);
+    // DEVICE->DestroyImage(depthImage.GetHandle());
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        DEVICE->DestroyBuffer(m_frameData[i].globalUBO);
-        m_frameData[i].commandBuffer.Free();
+        // DEVICE->DestroyBuffer(m_frameData[i].globalUBO);
+        m_frameData[i].globalUBO.Destroy();
+        m_frameData[i].commandBuffer.Destroy();
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].renderFinishedSemaphore, nullptr);
         vkDestroyFence(DEVICE->GetHandle(), m_frameData[i].inFlightFence, nullptr);
@@ -438,13 +441,14 @@ void App::CreatePipeline(void)
 
 void App::CreateCommandPool(void)
 {
-    commandPool.Initialize(DEVICE->GetHandle(), DEVICE->GetGraphicQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    commandPool.Initialize(DEVICE, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
 void App::CreateCommandBuffer()
 {
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        m_frameData[i].commandBuffer = commandPool.AllocateCommandBuffer();
+        // m_frameData[i].commandBuffer = commandPool.AllocateCommandBuffer();
+        m_frameData[i].commandBuffer.Initialize(DEVICE, &commandPool);
     }
 }
 
@@ -545,7 +549,8 @@ void App::CreateUniformBuffer(void)
     VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        m_frameData[i].globalUBO = DEVICE->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
+        // m_frameData[i].globalUBO = DEVICE->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
+        m_frameData[i].globalUBO.Initialize(DEVICE->GetMemoryAllocator(), bufferSize, bufferUsage, allocationFlags);
     }
 }
 
@@ -593,14 +598,14 @@ void App::CreateDescriptorSets(void)
         };
 
         VkDescriptorBufferInfo binding1 {
-            .buffer { m_frameData[i].globalUBO.handle },
+            .buffer { m_frameData[i].globalUBO.GetHandle() },
             .offset {},
             .range { sizeof(GlobalUniformData) }
         };
 
         VkDescriptorImageInfo binding2 {
             .sampler { textureSampler },
-            .imageView { textureImageView },
+            .imageView { textureImageView.GetHandle() },
             .imageLayout { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
         };
 
@@ -653,14 +658,15 @@ void App::CreateDepthResources(void)
 {
     VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
 
-    depthImage = DEVICE->CreateImage(
+    depthImage.Initialize(
+        DEVICE->GetMemoryAllocator(),
         SWAPCHAIN->GetExtent().width,
         SWAPCHAIN->GetExtent().height,
         depthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-    depthImageView = DEVICE->CreateImageView(depthImage.handle, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    depthImageView = depthImage.CreateView(DEVICE, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void App::CreateTexture(void)
@@ -676,17 +682,19 @@ void App::CreateTexture(void)
     VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VK::Buffer stagingBuffer = DEVICE->CreateBuffer(imageSize, stagingBufferUsage, stagingBufferAllocationFlags);
-    DEVICE->CopyDataToDevice(stagingBuffer.allocation, pixels, imageSize);
+    VK::Buffer stagingBuffer;
+    stagingBuffer.Initialize(DEVICE->GetMemoryAllocator(), imageSize, stagingBufferUsage, stagingBufferAllocationFlags);
+    stagingBuffer.CopyData(pixels, imageSize);
 
     stbi_image_free(pixels);
 
-    texture = DEVICE->CreateImage(static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    TransitionImageLayout(texture.handle, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    DEVICE->CopyBufferToImage(stagingBuffer.handle, texture.handle, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    TransitionImageLayout(texture.handle, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    texture.Initialize(DEVICE->GetMemoryAllocator(), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-    DEVICE->DestroyBuffer(stagingBuffer);
+    TransitionImageLayout(texture.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    VK::Image::CopyBufferToImage(DEVICE, &stagingBuffer, &texture, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    TransitionImageLayout(texture.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    textureImageView = texture.CreateView(DEVICE, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void App::CreateSampler()
@@ -720,7 +728,7 @@ void App::CreateSampler()
 
 void App::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-    VK::CommandBuffer commandBuffer = DEVICE->GetCommandPool().AllocateCommandBuffer();
+    VK::CommandBuffer commandBuffer = DEVICE->GetCommandPool()->AllocateCommandBuffer();
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VkImageSubresourceRange subresourceRange {
@@ -780,7 +788,7 @@ void App::Update(void)
     ubo.view = glm::lookAtLH(glm::vec3(0.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 50.0f);
 
-    DEVICE->CopyDataToDevice(CURRENT_FRAME.globalUBO.allocation, &ubo, sizeof(GlobalUniformData));
+    CURRENT_FRAME.globalUBO.CopyData(&ubo, sizeof(GlobalUniformData));
 }
 
 void App::Render(void)

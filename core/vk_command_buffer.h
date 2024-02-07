@@ -1,6 +1,9 @@
 #pragma once
 
 namespace VK {
+class Device;
+class CommandPool;
+
 class CommandBuffer {
 public:
     CommandBuffer() = default;
@@ -11,8 +14,8 @@ public:
     CommandBuffer& operator=(CommandBuffer&&) noexcept;
 
 public:
-    void Initialize(VkDevice device, VkCommandPool commandPool);
-    void Free(void);
+    void Initialize(const Device* pDevice, const CommandPool* pCommandPool);
+    void Destroy(void);
     void BeginRecording(VkCommandBufferUsageFlags usageFlags = 0);
     void EndRecording(void);
     void Reset(void);
@@ -23,8 +26,10 @@ public: // getter
     VkCommandBuffer GetHandle(void) const { return m_handle; }
 
 private:
-    VkDevice m_device { VK_NULL_HANDLE };
-    VkCommandPool m_commandPool { VK_NULL_HANDLE };
+    const Device* p_device { nullptr };
+    const CommandPool* p_commandPool { nullptr };
+
+private:
     VkCommandBuffer m_handle { VK_NULL_HANDLE };
 };
 }
