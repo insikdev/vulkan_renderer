@@ -9,7 +9,7 @@ class Image;
 class MemoryAllocator {
 public:
     MemoryAllocator() = default;
-    ~MemoryAllocator();
+    ~MemoryAllocator() { Destroy(); }
     MemoryAllocator(const MemoryAllocator&) = delete;
     MemoryAllocator(MemoryAllocator&&) = delete;
     MemoryAllocator& operator=(const MemoryAllocator&) = delete;

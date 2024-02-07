@@ -1,11 +1,6 @@
 #include "vk_swapchain.h"
 #include "query.h"
 
-VK::Swapchain::~Swapchain()
-{
-    Destroy();
-}
-
 void VK::Swapchain::Initialize(const VkSurfaceKHR& surface, const VkPhysicalDevice& physicalDevice, const VkDevice& device, uint32_t graphicQueueFamilyIndex, uint32_t presentQueueFamilyIndex)
 {
     assert(m_handle == VK_NULL_HANDLE);

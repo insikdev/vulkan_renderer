@@ -1,15 +1,12 @@
 #pragma once
 
-class VK::Device;
-class VK::MemoryAllocator;
-
 class Mesh {
 public:
     Mesh(const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
     ~Mesh();
 
 public:
-    void Draw(VkCommandBuffer commandBuffer);
+    void Draw(const VkCommandBuffer& commandBuffer);
 
 public: // getter
     VkBuffer GetUniformBuffer(void) const { return m_uniformBuffer.GetHandle(); }

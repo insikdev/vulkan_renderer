@@ -6,7 +6,7 @@ namespace VK {
 class Device {
 public:
     Device() = default;
-    ~Device();
+    ~Device() { Destroy(); }
     Device(const Device&) = delete;
     Device(Device&&) = delete;
     Device& operator=(const Device&) = delete;

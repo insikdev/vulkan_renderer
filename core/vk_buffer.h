@@ -8,7 +8,7 @@ class CommandBuffer;
 class Buffer {
 public:
     Buffer() = default;
-    ~Buffer();
+    ~Buffer() { Destroy(); }
     Buffer(const Buffer&) = delete;
     Buffer(Buffer&&) noexcept;
     Buffer& operator=(const Buffer&) = delete;

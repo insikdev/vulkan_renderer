@@ -6,3 +6,6 @@
 #include "vk_command_buffer.h"
 #include "vk_buffer.h"
 #include "vk_image.h"
+
+#include "vk_semaphore.h"
+#include "vk_fence.h"

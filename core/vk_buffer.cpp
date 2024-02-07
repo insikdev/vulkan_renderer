@@ -1,11 +1,6 @@
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
 
-VK::Buffer::~Buffer()
-{
-    Destroy();
-}
-
 VK::Buffer::Buffer(Buffer&& other) noexcept
     : m_handle { other.m_handle }
     , m_allocation { other.m_allocation }

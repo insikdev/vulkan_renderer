@@ -6,7 +6,7 @@ namespace VK {
 class Shader {
 public:
     Shader() = default;
-    ~Shader();
+    ~Shader() { Destroy(); }
     Shader(const Shader&) = delete;
     Shader(Shader&&) = delete;
     Shader& operator=(const Shader&) = delete;

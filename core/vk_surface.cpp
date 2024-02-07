@@ -1,10 +1,5 @@
 #include "vk_surface.h"
 
-VK::Surface::~Surface()
-{
-    Destroy();
-}
-
 void VK::Surface::Initialize(const VkInstance& instance, const HINSTANCE& hinstance, const HWND& hwnd)
 {
     assert(m_handle == VK_NULL_HANDLE);

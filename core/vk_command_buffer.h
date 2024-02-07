@@ -6,7 +6,7 @@ namespace VK {
 class CommandBuffer {
 public:
     CommandBuffer() = default;
-    ~CommandBuffer();
+    ~CommandBuffer() { Destroy(); }
     CommandBuffer(const CommandBuffer&) = delete;
     CommandBuffer(CommandBuffer&&) noexcept;
     CommandBuffer& operator=(const CommandBuffer&) = delete;

@@ -6,7 +6,7 @@ namespace VK {
 class ImageView {
 public:
     ImageView() = default;
-    ~ImageView();
+    ~ImageView() { Destroy(); }
     ImageView(const ImageView&) = delete;
     ImageView(ImageView&&) noexcept;
     ImageView& operator=(const ImageView&) = delete;

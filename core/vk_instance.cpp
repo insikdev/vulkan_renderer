@@ -2,11 +2,6 @@
 #include "query.h"
 #include "utils.h"
 
-VK::Instance::~Instance()
-{
-    Destroy();
-}
-
 void VK::Instance::Initialize(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
 {
     assert(m_handle == VK_NULL_HANDLE);

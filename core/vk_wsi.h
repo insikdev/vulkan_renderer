@@ -12,7 +12,7 @@ namespace VK {
 class WSI {
 public:
     WSI() = default;
-    ~WSI();
+    ~WSI() { Destroy(); }
     WSI(const WSI&) = delete;
     WSI(WSI&&) = delete;
     WSI& operator=(const WSI&) = delete;

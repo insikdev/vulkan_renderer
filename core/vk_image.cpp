@@ -2,11 +2,6 @@
 #include "vk_command_buffer.h"
 #include "vk_image_view.h"
 
-VK::Image::~Image()
-{
-    Destroy();
-}
-
 VK::Image::Image(Image&& other) noexcept
     : m_handle { other.m_handle }
     , m_allocation { other.m_allocation }

@@ -2,11 +2,6 @@
 #include "query.h"
 #include "utils.h"
 
-VK::Device::~Device()
-{
-    Destroy();
-}
-
 void VK::Device::Initialize(const VkInstance& instance, const VkSurfaceKHR& surface, const std::vector<const char*>& requiredExtensions)
 {
     assert(m_device == VK_NULL_HANDLE);

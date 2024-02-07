@@ -6,7 +6,7 @@ namespace VK {
 class Instance {
 public:
     Instance() = default;
-    ~Instance();
+    ~Instance() { Destroy(); }
     Instance(const Instance&) = delete;
     Instance(Instance&&) = delete;
     Instance& operator=(const Instance&) = delete;

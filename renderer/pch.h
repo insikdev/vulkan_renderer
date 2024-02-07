@@ -41,9 +41,9 @@ struct GlobalUniformData {
 
 struct FrameData {
     VK::CommandBuffer commandBuffer;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
+    VK::Semaphore imageAvailableSemaphore;
+    VK::Semaphore renderFinishedSemaphore;
+    VK::Fence inFlightFence;
     std::vector<VkDescriptorSet> descriptorSets;
     VK::Buffer globalUBO;
 };

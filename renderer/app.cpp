@@ -44,9 +44,9 @@ App::~App()
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
         m_frameData[i].globalUBO.Destroy();
         m_frameData[i].commandBuffer.Destroy();
-        vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].imageAvailableSemaphore, nullptr);
-        vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].renderFinishedSemaphore, nullptr);
-        vkDestroyFence(DEVICE->GetHandle(), m_frameData[i].inFlightFence, nullptr);
+        m_frameData[i].imageAvailableSemaphore.Destroy();
+        m_frameData[i].renderFinishedSemaphore.Destroy();
+        m_frameData[i].inFlightFence.Destroy();
     }
 
     vkDestroyDescriptorPool(DEVICE->GetHandle(), descriptorPool, nullptr);
@@ -198,7 +198,7 @@ void App::CreateDescriptorSetLayout(void)
         .pImmutableSamplers { nullptr }
     };
 
-    VkDescriptorSetLayoutBinding binding2 { // global
+    VkDescriptorSetLayoutBinding binding2 { //
         .binding { 2 },
         .descriptorType { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
         .descriptorCount { 1 },
@@ -453,22 +453,10 @@ void App::CreateCommandBuffer()
 
 void App::CreateSyncObjects(void)
 {
-    VkSemaphoreCreateInfo semaphoreInfo {
-        .sType { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO },
-        .pNext { nullptr },
-        .flags {}
-    };
-
-    VkFenceCreateInfo fenceInfo {
-        .sType { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO },
-        .pNext { nullptr },
-        .flags { VK_FENCE_CREATE_SIGNALED_BIT }
-    };
-
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        CHECK_VK(vkCreateSemaphore(DEVICE->GetHandle(), &semaphoreInfo, nullptr, &m_frameData[i].imageAvailableSemaphore), "");
-        CHECK_VK(vkCreateSemaphore(DEVICE->GetHandle(), &semaphoreInfo, nullptr, &m_frameData[i].renderFinishedSemaphore), "");
-        CHECK_VK(vkCreateFence(DEVICE->GetHandle(), &fenceInfo, nullptr, &m_frameData[i].inFlightFence), "");
+        m_frameData[i].imageAvailableSemaphore.Initialize(DEVICE->GetHandle());
+        m_frameData[i].renderFinishedSemaphore.Initialize(DEVICE->GetHandle());
+        m_frameData[i].inFlightFence.Initialize(DEVICE->GetHandle(), VK_FENCE_CREATE_SIGNALED_BIT);
     }
 }
 
@@ -739,10 +727,12 @@ void App::Update(void)
 
 void App::Render(void)
 {
-    vkWaitForFences(DEVICE->GetHandle(), 1, &CURRENT_FRAME.inFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(DEVICE->GetHandle(), 1, &CURRENT_FRAME.inFlightFence);
+    std::vector<VkFence> fences = { CURRENT_FRAME.inFlightFence.GetHandle() };
+
+    vkWaitForFences(DEVICE->GetHandle(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
+    vkResetFences(DEVICE->GetHandle(), static_cast<uint32_t>(fences.size()), fences.data());
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(DEVICE->GetHandle(), SWAPCHAIN->GetHandle(), UINT64_MAX, CURRENT_FRAME.imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    vkAcquireNextImageKHR(DEVICE->GetHandle(), SWAPCHAIN->GetHandle(), UINT64_MAX, CURRENT_FRAME.imageAvailableSemaphore.GetHandle(), VK_NULL_HANDLE, &imageIndex);
 
     VK::CommandBuffer& commandBuffer = CURRENT_FRAME.commandBuffer;
 
@@ -751,11 +741,11 @@ void App::Render(void)
     recordCommandBuffer(commandBuffer.GetHandle(), imageIndex);
     commandBuffer.EndRecording();
 
-    std::vector<VkSemaphore> waitSemaphores = { CURRENT_FRAME.imageAvailableSemaphore };
+    std::vector<VkSemaphore> waitSemaphores = { CURRENT_FRAME.imageAvailableSemaphore.GetHandle() };
     VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    std::vector<VkSemaphore> signalSemaphores = { CURRENT_FRAME.renderFinishedSemaphore };
+    std::vector<VkSemaphore> signalSemaphores = { CURRENT_FRAME.renderFinishedSemaphore.GetHandle() };
 
-    commandBuffer.Submit(waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence);
+    commandBuffer.Submit(waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence.GetHandle());
 
     VkSwapchainKHR swapChains[] = { SWAPCHAIN->GetHandle() };
 

@@ -8,7 +8,7 @@ class CommandBuffer;
 class CommandPool {
 public:
     CommandPool() = default;
-    ~CommandPool();
+    ~CommandPool() { Destroy(); }
     CommandPool(const CommandPool&) = delete;
     CommandPool(CommandPool&&) = delete;
     CommandPool& operator=(const CommandPool&) = delete;

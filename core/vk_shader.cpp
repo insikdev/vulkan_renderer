@@ -1,10 +1,5 @@
 #include "vk_shader.h"
 
-VK::Shader::~Shader()
-{
-    Destroy();
-}
-
 void VK::Shader::Initialize(const VkDevice& device, const std::vector<char>& code)
 {
     assert(m_handle == VK_NULL_HANDLE);

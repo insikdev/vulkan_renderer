@@ -1,10 +1,5 @@
 #include "vk_command_buffer.h"
 
-VK::CommandBuffer::~CommandBuffer()
-{
-    Destroy();
-}
-
 VK::CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept
     : m_handle { other.m_handle }
     , m_device { other.m_device }

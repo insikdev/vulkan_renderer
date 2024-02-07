@@ -3,11 +3,6 @@
 #include "vk_buffer.h"
 #include "vk_image.h"
 
-VK::MemoryAllocator::~MemoryAllocator()
-{
-    Destroy();
-}
-
 void VK::MemoryAllocator::Initialize(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkDevice& device)
 {
     assert(m_handle == VK_NULL_HANDLE);

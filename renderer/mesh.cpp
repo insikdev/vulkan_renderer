@@ -19,7 +19,7 @@ Mesh::~Mesh()
     m_uniformBuffer.Destroy();
 }
 
-void Mesh::Draw(VkCommandBuffer commandBuffer)
+void Mesh::Draw(const VkCommandBuffer& commandBuffer)
 {
     VkBuffer vertexBuffers[] = { m_vertexBuffer.GetHandle() };
     VkDeviceSize offsets[] = { 0 };

@@ -1,11 +1,6 @@
 #include "vk_command_pool.h"
 #include "vk_command_buffer.h"
 
-VK::CommandPool::~CommandPool()
-{
-    Destroy();
-}
-
 void VK::CommandPool::Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
 {
     assert(m_handle == VK_NULL_HANDLE);

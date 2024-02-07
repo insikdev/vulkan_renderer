@@ -1,10 +1,5 @@
 #include "vk_wsi.h"
 
-VK::WSI::~WSI()
-{
-    Destroy();
-}
-
 void VK::WSI::Initialize(
     const std::vector<const char*>& instanceLayers,
     const std::vector<const char*>& instanceExtensions,

@@ -23,6 +23,8 @@
     <ClInclude Include="vk_image.h" />
     <ClInclude Include="vk_image_view.h" />
     <ClInclude Include="common.h" />
+    <ClInclude Include="vk_semaphore.h" />
+    <ClInclude Include="vk_fence.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="vk_instance.cpp" />
@@ -43,6 +45,8 @@
     <ClCompile Include="vk_buffer.cpp" />
     <ClCompile Include="vk_image.cpp" />
     <ClCompile Include="vk_image_view.cpp" />
+    <ClCompile Include="vk_semaphore.cpp" />
+    <ClCompile Include="vk_fence.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="private">

@@ -7,7 +7,7 @@ namespace VK {
 class Swapchain {
 public:
     Swapchain() = default;
-    ~Swapchain();
+    ~Swapchain() { Destroy(); }
     Swapchain(const Swapchain&) = delete;
     Swapchain(Swapchain&&) = delete;
     Swapchain& operator=(const Swapchain&) = delete;

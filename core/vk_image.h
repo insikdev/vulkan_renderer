@@ -9,7 +9,7 @@ class ImageView;
 class Image {
 public:
     Image() = default;
-    ~Image();
+    ~Image() { Destroy(); }
     Image(const Image&) = delete;
     Image(Image&&) noexcept;
     Image& operator=(const Image&) = delete;

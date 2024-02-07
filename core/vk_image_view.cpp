@@ -1,10 +1,5 @@
 #include "vk_image_view.h"
 
-VK::ImageView::~ImageView()
-{
-    Destroy();
-}
-
 VK::ImageView::ImageView(ImageView&& other) noexcept
     : m_handle { other.m_handle }
     , m_device { other.m_device }

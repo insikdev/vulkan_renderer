@@ -6,7 +6,7 @@ namespace VK {
 class Surface {
 public:
     Surface() = default;
-    ~Surface();
+    ~Surface() { Destroy(); }
     Surface(const Surface&) = delete;
     Surface(Surface&&) = delete;
     Surface& operator=(const Surface&) = delete;
