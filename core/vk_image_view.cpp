@@ -1,5 +1,4 @@
 #include "vk_image_view.h"
-#include "vk_device.h"
 
 VK::ImageView::~ImageView()
 {
@@ -8,31 +7,29 @@ VK::ImageView::~ImageView()
 
 VK::ImageView::ImageView(ImageView&& other) noexcept
     : m_handle { other.m_handle }
-    , p_device { other.p_device }
+    , m_device { other.m_device }
 {
     other.m_handle = VK_NULL_HANDLE;
-    other.p_device = nullptr;
 }
 
 VK::ImageView& VK::ImageView::operator=(ImageView&& other) noexcept
 {
     if (this != &other) {
         m_handle = other.m_handle;
-        p_device = other.p_device;
+        m_device = other.m_device;
 
         other.m_handle = VK_NULL_HANDLE;
-        other.p_device = nullptr;
     }
 
     return *this;
 }
 
-void VK::ImageView::Initialize(const Device* pDevice, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+void VK::ImageView::Initialize(const VkDevice& device, const VkImage& image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
-    assert(m_handle == VK_NULL_HANDLE && pDevice != nullptr);
+    assert(m_handle == VK_NULL_HANDLE);
 
     {
-        p_device = pDevice;
+        m_device = device;
     }
 
     VkComponentMapping components {
@@ -61,14 +58,13 @@ void VK::ImageView::Initialize(const Device* pDevice, VkImage image, VkFormat fo
         .subresourceRange { subresourceRange },
     };
 
-    CHECK_VK(vkCreateImageView(p_device->GetHandle(), &createInfo, nullptr, &m_handle), "Failed to create image view.");
+    CHECK_VK(vkCreateImageView(m_device, &createInfo, nullptr, &m_handle), "Failed to create image view.");
 }
 
 void VK::ImageView::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        vkDestroyImageView(p_device->GetHandle(), m_handle, nullptr);
+        vkDestroyImageView(m_device, m_handle, nullptr);
         m_handle = VK_NULL_HANDLE;
-        p_device = nullptr;
     }
 }

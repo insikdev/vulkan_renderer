@@ -1,18 +1,16 @@
 #include "vk_surface.h"
-#include "vk_instance.h"
 
 VK::Surface::~Surface()
 {
     Destroy();
 }
 
-#ifdef _WIN32
-void VK::Surface::Initialize(const Instance* pInstance, HINSTANCE hinstance, HWND hwnd)
+void VK::Surface::Initialize(const VkInstance& instance, const HINSTANCE& hinstance, const HWND& hwnd)
 {
-    assert(m_handle == VK_NULL_HANDLE && pInstance != nullptr && hinstance != nullptr && hwnd != nullptr);
+    assert(m_handle == VK_NULL_HANDLE);
 
     {
-        p_instance = pInstance;
+        m_instance = instance;
     }
 
     VkWin32SurfaceCreateInfoKHR createInfo {
@@ -23,15 +21,13 @@ void VK::Surface::Initialize(const Instance* pInstance, HINSTANCE hinstance, HWN
         .hwnd { hwnd }
     };
 
-    CHECK_VK(vkCreateWin32SurfaceKHR(p_instance->GetHandle(), &createInfo, nullptr, &m_handle), "Failed to create win32 surface.");
+    CHECK_VK(vkCreateWin32SurfaceKHR(m_instance, &createInfo, nullptr, &m_handle), "Failed to create win32 surface.");
 }
-#endif
 
 void VK::Surface::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        vkDestroySurfaceKHR(p_instance->GetHandle(), m_handle, nullptr);
+        vkDestroySurfaceKHR(m_instance, m_handle, nullptr);
         m_handle = VK_NULL_HANDLE;
-        p_instance = nullptr;
     }
 }

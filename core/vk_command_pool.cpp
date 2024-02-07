@@ -1,5 +1,4 @@
 #include "vk_command_pool.h"
-#include "vk_device.h"
 #include "vk_command_buffer.h"
 
 VK::CommandPool::~CommandPool()
@@ -7,37 +6,36 @@ VK::CommandPool::~CommandPool()
     Destroy();
 }
 
-void VK::CommandPool::Initialize(const Device* pDevice, VkCommandPoolCreateFlags createFlags)
+void VK::CommandPool::Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
 {
-    assert(m_handle == VK_NULL_HANDLE && pDevice != nullptr);
+    assert(m_handle == VK_NULL_HANDLE);
 
     {
-        p_device = pDevice;
+        m_device = device;
     }
 
     VkCommandPoolCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
         .pNext { nullptr },
         .flags { createFlags },
-        .queueFamilyIndex { p_device->GetGraphicQueueFamilyIndex() }
+        .queueFamilyIndex { queueFamilyIndex }
     };
 
-    CHECK_VK(vkCreateCommandPool(p_device->GetHandle(), &createInfo, nullptr, &m_handle), "Failed to create command pool.");
+    CHECK_VK(vkCreateCommandPool(m_device, &createInfo, nullptr, &m_handle), "Failed to create command pool.");
 }
 
 void VK::CommandPool::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(p_device->GetHandle(), m_handle, nullptr);
+        vkDestroyCommandPool(m_device, m_handle, nullptr);
         m_handle = VK_NULL_HANDLE;
-        p_device = nullptr;
     }
 }
 
-VK::CommandBuffer VK::CommandPool::AllocateCommandBuffer(void) const
+VK::CommandBuffer VK::CommandPool::AllocateCommandBuffer(const VkQueue& queueToSubmit) const
 {
     VK::CommandBuffer commandBuffer;
-    commandBuffer.Initialize(p_device, this);
+    commandBuffer.Initialize(m_device, m_handle, queueToSubmit);
 
     return commandBuffer;
 }

@@ -3,7 +3,6 @@
 #include "common.h"
 
 namespace VK {
-class Device;
 class CommandBuffer;
 
 class CommandPool {
@@ -16,15 +15,17 @@ public:
     CommandPool& operator=(CommandPool&&) = delete;
 
 public:
-    void Initialize(const Device* pDevice, VkCommandPoolCreateFlags createFlags = 0);
+    void Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = 0);
     void Destroy(void);
-    CommandBuffer AllocateCommandBuffer(void) const;
+
+public: // method
+    CommandBuffer AllocateCommandBuffer(const VkQueue& queueToSubmit) const;
 
 public: // getter
     VkCommandPool GetHandle(void) const { return m_handle; }
 
 private:
-    const Device* p_device { nullptr };
+    VkDevice m_device { VK_NULL_HANDLE };
 
 private:
     VkCommandPool m_handle { VK_NULL_HANDLE };

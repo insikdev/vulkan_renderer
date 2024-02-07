@@ -1,52 +1,40 @@
 #include "vk_device.h"
-#include "vk_instance.h"
-#include "vk_surface.h"
 #include "query.h"
 #include "utils.h"
-#include "vk_command_buffer.h"
 
 VK::Device::~Device()
 {
     Destroy();
 }
 
-void VK::Device::Initialize(const Instance* pInstance, const Surface* pSurface, const std::vector<const char*>& requiredExtensions)
+void VK::Device::Initialize(const VkInstance& instance, const VkSurfaceKHR& surface, const std::vector<const char*>& requiredExtensions)
 {
-    assert(m_device == VK_NULL_HANDLE && pInstance != VK_NULL_HANDLE && pSurface != VK_NULL_HANDLE);
+    assert(m_device == VK_NULL_HANDLE);
 
-    {
-        p_instance = pInstance;
-        p_surface = pSurface;
-    }
-
-    m_physicalDevice = SelectPhysicalDevice();
+    m_physicalDevice = SelectPhysicalDevice(instance);
 
     if (Utils::CheckExtensionSupport(requiredExtensions, Query::GetDeviceExtensions(m_physicalDevice)) == false) {
         throw std::runtime_error("Required extensions are not supported.");
     }
 
-    SelectQueueIndex(p_surface->GetHandle());
+    SelectQueueIndex(surface);
     CreateLogicalDevice(requiredExtensions);
-
-    m_allocator.Initialize(p_instance, this);
-    m_commandPool.Initialize(this);
 }
 
 void VK::Device::Destroy(void)
 {
     if (m_device != VK_NULL_HANDLE) {
-        m_commandPool.Destroy();
-        m_allocator.Destroy();
         vkDestroyDevice(m_device, nullptr);
+        m_physicalDevice = VK_NULL_HANDLE;
         m_device = VK_NULL_HANDLE;
-        p_instance = nullptr;
-        p_surface = nullptr;
+        m_graphicsQueue = VK_NULL_HANDLE;
+        m_presentQueue = VK_NULL_HANDLE;
     }
 }
 
-VkPhysicalDevice VK::Device::SelectPhysicalDevice()
+VkPhysicalDevice VK::Device::SelectPhysicalDevice(const VkInstance& instance)
 {
-    const auto& devices = Query::GetPhysicalDevices(p_instance->GetHandle());
+    const auto& devices = Query::GetPhysicalDevices(instance);
 
     if (devices.empty()) {
         throw std::runtime_error("Failed to find GPUs with Vulkan support.");
@@ -71,7 +59,7 @@ VkPhysicalDevice VK::Device::SelectPhysicalDevice()
     throw std::runtime_error("Failed to select physical device.");
 }
 
-void VK::Device::SelectQueueIndex(VkSurfaceKHR surface)
+void VK::Device::SelectQueueIndex(const VkSurfaceKHR& surface)
 {
     const auto& queueFamilies = Query::GetQueueFamilies(m_physicalDevice);
 

@@ -28,7 +28,7 @@ std::vector<VkLayerProperties> Query::GetInstanceLayers(void)
     return availableLayers;
 }
 
-std::vector<VkPhysicalDevice> Query::GetPhysicalDevices(VkInstance instance)
+std::vector<VkPhysicalDevice> Query::GetPhysicalDevices(const VkInstance& instance)
 {
     uint32_t deviceCount {};
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -42,7 +42,7 @@ std::vector<VkPhysicalDevice> Query::GetPhysicalDevices(VkInstance instance)
     return availablePhysicalDevices;
 }
 
-std::vector<VkExtensionProperties> Query::GetDeviceExtensions(VkPhysicalDevice physicalDevice)
+std::vector<VkExtensionProperties> Query::GetDeviceExtensions(const VkPhysicalDevice& physicalDevice)
 {
     uint32_t extensionCount {};
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
@@ -56,7 +56,7 @@ std::vector<VkExtensionProperties> Query::GetDeviceExtensions(VkPhysicalDevice p
     return availableExtensions;
 }
 
-std::vector<VkQueueFamilyProperties> Query::GetQueueFamilies(VkPhysicalDevice physicalDevice)
+std::vector<VkQueueFamilyProperties> Query::GetQueueFamilies(const VkPhysicalDevice& physicalDevice)
 {
     uint32_t queueFamilyCount {};
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
@@ -70,7 +70,7 @@ std::vector<VkQueueFamilyProperties> Query::GetQueueFamilies(VkPhysicalDevice ph
     return availableQueueFamilies;
 }
 
-std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface)
 {
     uint32_t formatCount {};
     vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
@@ -84,7 +84,7 @@ std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(VkPhysicalDevice physic
     return availableFormats;
 }
 
-std::vector<VkPresentModeKHR> Query::GetPresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+std::vector<VkPresentModeKHR> Query::GetPresentModes(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface)
 {
     uint32_t presentModeCount {};
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);

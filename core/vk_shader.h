@@ -3,8 +3,6 @@
 #include "common.h"
 
 namespace VK {
-class Device;
-
 class Shader {
 public:
     Shader() = default;
@@ -15,14 +13,14 @@ public:
     Shader& operator=(Shader&&) = delete;
 
 public:
-    void Initialize(const Device* pDevice, const std::vector<char>& code);
+    void Initialize(const VkDevice& device, const std::vector<char>& code);
     void Destroy(void);
 
 public: // getter
     VkShaderModule GetHandle(void) const { return m_handle; }
 
 private:
-    const Device* p_device { nullptr };
+    VkDevice m_device { VK_NULL_HANDLE };
 
 private:
     VkShaderModule m_handle { VK_NULL_HANDLE };

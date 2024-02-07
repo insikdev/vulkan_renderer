@@ -3,8 +3,6 @@
 #include "common.h"
 
 namespace VK {
-class Instance;
-
 class Surface {
 public:
     Surface() = default;
@@ -15,16 +13,16 @@ public:
     Surface& operator=(Surface&&) = delete;
 
 public:
-#ifdef _WIN32
-    void Initialize(const Instance* pInstance, HINSTANCE hinstance, HWND hwnd);
-#endif
+    void Initialize(const VkInstance& instance, const HINSTANCE& hinstance, const HWND& hwnd);
     void Destroy(void);
 
 public: // getter
     VkSurfaceKHR GetHandle(void) const { return m_handle; }
 
 private:
-    const Instance* p_instance { nullptr };
+    VkInstance m_instance { VK_NULL_HANDLE };
+
+private:
     VkSurfaceKHR m_handle { VK_NULL_HANDLE };
 };
 }

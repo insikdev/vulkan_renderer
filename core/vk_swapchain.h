@@ -4,9 +4,6 @@
 #include "vk_image_view.h"
 
 namespace VK {
-class Surface;
-class Device;
-
 class Swapchain {
 public:
     Swapchain() = default;
@@ -17,9 +14,11 @@ public:
     Swapchain& operator=(Swapchain&&) = delete;
 
 public:
-    void Initialize(const Surface* pSurface, const Device* pDevice);
+    void Initialize(const VkSurfaceKHR& surface, const VkPhysicalDevice& physicalDevice, const VkDevice& device, uint32_t graphicQueueFamilyIndex, uint32_t presentQueueFamilyIndex);
     void Destroy(void);
-    void CreateFrameBuffers(VkRenderPass renderPass, VkImageView depthImageView);
+
+public: // method
+    void CreateFrameBuffers(const VkRenderPass& renderPass, const VkImageView& depthImageView);
 
 public: // getter
     VkSwapchainKHR GetHandle(void) const { return m_handle; }
@@ -28,14 +27,13 @@ public: // getter
     VkFramebuffer GetFrameBuffer(uint32_t index) const { return m_framebuffers[index]; }
 
 private:
-    VkSurfaceFormatKHR SelectFormat(void);
-    VkPresentModeKHR SelectPresentMode(void);
-    void CreateSwapchain(void);
+    VkSurfaceFormatKHR SelectFormat(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface);
+    VkPresentModeKHR SelectPresentMode(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface);
+    void CreateSwapchain(const VkSurfaceKHR& surface, uint32_t graphicQueueFamilyIndex, uint32_t presentQueueFamilyIndex);
     void CreateImageViews(void);
 
 private:
-    const Surface* p_surface { nullptr };
-    const Device* p_device { nullptr };
+    VkDevice m_device { VK_NULL_HANDLE };
 
 private:
     VkSurfaceCapabilitiesKHR m_capabilities {};

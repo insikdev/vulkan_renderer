@@ -3,32 +3,31 @@
 #include "common.h"
 
 namespace VK {
-class Device;
+class CommandBuffer;
 
 class Buffer {
-    friend class MemoryAllocator;
-
 public:
     Buffer() = default;
     ~Buffer();
     Buffer(const Buffer&) = delete;
-    Buffer(Buffer&&) = delete;
+    Buffer(Buffer&&) noexcept;
     Buffer& operator=(const Buffer&) = delete;
-    Buffer& operator=(Buffer&&) = delete;
+    Buffer& operator=(Buffer&&) noexcept;
 
 public:
-    void Initialize(const MemoryAllocator* pAllocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
+    void Initialize(const VmaAllocator& allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
     void Destroy(void);
-    void CopyData(void* pSrc, VkDeviceSize size);
 
-public:
-    static void CopyBufferToBuffer(const Device* pDevice, const Buffer* src, const Buffer* dst, VkDeviceSize size);
+public: // method
+    void CopyData(void* pSrc, VkDeviceSize size);
+    void CopyToBuffer(const CommandBuffer& commandBuffer, const VkBuffer& dstBuffer, VkDeviceSize size);
+    void CopyToImage(const CommandBuffer& commandBuffer, const VkImage& image, const VkExtent3D& extent3D);
 
 public: // getter
     VkBuffer GetHandle(void) const { return m_handle; }
 
 private:
-    const MemoryAllocator* p_allocator { nullptr };
+    VmaAllocator m_allocator { VK_NULL_HANDLE };
 
 private:
     VkBuffer m_handle { VK_NULL_HANDLE };

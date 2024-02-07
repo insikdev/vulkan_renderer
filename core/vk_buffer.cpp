@@ -1,6 +1,4 @@
 #include "vk_buffer.h"
-#include "vk_device.h"
-#include "vk_command_pool.h"
 #include "vk_command_buffer.h"
 
 VK::Buffer::~Buffer()
@@ -8,23 +6,65 @@ VK::Buffer::~Buffer()
     Destroy();
 }
 
-void VK::Buffer::Initialize(const MemoryAllocator* pAllocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
+VK::Buffer::Buffer(Buffer&& other) noexcept
+    : m_handle { other.m_handle }
+    , m_allocation { other.m_allocation }
+    , m_allocator { other.m_allocator }
 {
-    assert(m_handle == VK_NULL_HANDLE && pAllocator != nullptr);
+    other.m_handle = VK_NULL_HANDLE;
+}
 
-    {
-        p_allocator = pAllocator;
+VK::Buffer& VK::Buffer::operator=(Buffer&& other) noexcept
+{
+    if (this != &other) {
+        m_handle = other.m_handle;
+        m_allocation = other.m_allocation;
+        m_allocator = other.m_allocator;
+
+        other.m_handle = VK_NULL_HANDLE;
     }
 
-    p_allocator->CreateBuffer(this, size, usage, allocationFlags);
+    return *this;
+}
+
+void VK::Buffer::Initialize(const VmaAllocator& allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
+{
+    assert(m_handle == VK_NULL_HANDLE);
+
+    {
+        m_allocator = allocator;
+    }
+
+    VkBufferCreateInfo bufferCreateInfo {
+        .sType { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO },
+        .pNext { nullptr },
+        .flags {},
+        .size { size },
+        .usage { usage },
+        .sharingMode {},
+        .queueFamilyIndexCount {},
+        .pQueueFamilyIndices {}
+    };
+
+    VmaAllocationCreateInfo allocationCreateInfo = {
+        .flags { allocationFlags },
+        .usage { VMA_MEMORY_USAGE_AUTO },
+        .requiredFlags {},
+        .preferredFlags {},
+        .memoryTypeBits {},
+        .pool {},
+        .pUserData {},
+        .priority {}
+    };
+
+    CHECK_VK(vmaCreateBuffer(m_allocator, &bufferCreateInfo, &allocationCreateInfo, &m_handle, &m_allocation, nullptr), "Failed to create buffer.");
 }
 
 void VK::Buffer::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        p_allocator->DestroyBuffer(this);
+        vmaDestroyBuffer(m_allocator, m_handle, m_allocation);
         m_handle = VK_NULL_HANDLE;
-        p_allocator = nullptr;
     }
 }
 
@@ -32,14 +72,14 @@ void VK::Buffer::CopyData(void* pSrc, VkDeviceSize size)
 {
     assert(m_allocation != VK_NULL_HANDLE);
 
-    memcpy(p_allocator->Map(this), pSrc, size);
-    p_allocator->Unmap(this);
+    void* pData;
+    vmaMapMemory(m_allocator, m_allocation, &pData);
+    memcpy(pData, pSrc, size);
+    vmaUnmapMemory(m_allocator, m_allocation);
 }
 
-void VK::Buffer::CopyBufferToBuffer(const Device* pDevice, const Buffer* src, const Buffer* dst, VkDeviceSize size)
+void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, const VkBuffer& dstBuffer, VkDeviceSize size)
 {
-    VK::CommandBuffer commandBuffer = pDevice->GetCommandPool()->AllocateCommandBuffer();
-
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VkBufferCopy copyRegion {
@@ -48,8 +88,34 @@ void VK::Buffer::CopyBufferToBuffer(const Device* pDevice, const Buffer* src, co
         .size { size }
     };
 
-    vkCmdCopyBuffer(commandBuffer.GetHandle(), src->m_handle, dst->m_handle, 1, &copyRegion);
+    vkCmdCopyBuffer(commandBuffer.GetHandle(), m_handle, dstBuffer, 1, &copyRegion);
 
     commandBuffer.EndRecording();
-    commandBuffer.Submit(pDevice->GetGrahpicsQueue());
+    commandBuffer.Submit();
+}
+
+void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, const VkImage& image, const VkExtent3D& extent3D)
+{
+    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VkImageSubresourceLayers imageSubresource {
+        .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
+        .mipLevel { 0 },
+        .baseArrayLayer { 0 },
+        .layerCount { 1 }
+    };
+
+    VkBufferImageCopy region {
+        .bufferOffset { 0 },
+        .bufferRowLength { 0 },
+        .bufferImageHeight { 0 },
+        .imageSubresource { imageSubresource },
+        .imageOffset { 0, 0, 0 },
+        .imageExtent { extent3D }
+    };
+
+    vkCmdCopyBufferToImage(commandBuffer.GetHandle(), m_handle, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    commandBuffer.EndRecording();
+    commandBuffer.Submit();
 }

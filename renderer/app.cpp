@@ -7,6 +7,8 @@
 #define CURRENT_FRAME m_frameData[m_currentFrame]
 #define DEVICE p_wsi->GetDevice()
 #define SWAPCHAIN p_wsi->GetSwapchain()
+#define COMMANDPOOL p_wsi->GetCommandPool()
+#define ALLOCATOR p_wsi->GetMemoryAllocator()
 
 App::App(uint32_t width, uint32_t height)
     : m_width { width }
@@ -34,17 +36,12 @@ App::~App()
 {
     delete m_mesh;
     vkDestroySampler(DEVICE->GetHandle(), textureSampler, nullptr);
-    // vkDestroyImageView(DEVICE->GetHandle(), textureImageView, nullptr);
     textureImageView.Destroy();
-    // vkDestroyImageView(DEVICE->GetHandle(), depthImageView, nullptr);
     depthImageView.Destroy();
     texture.Destroy();
     depthImage.Destroy();
-    // DEVICE->DestroyImage(texture);
-    // DEVICE->DestroyImage(depthImage.GetHandle());
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        // DEVICE->DestroyBuffer(m_frameData[i].globalUBO);
         m_frameData[i].globalUBO.Destroy();
         m_frameData[i].commandBuffer.Destroy();
         vkDestroySemaphore(DEVICE->GetHandle(), m_frameData[i].imageAvailableSemaphore, nullptr);
@@ -103,7 +100,8 @@ void App::CreateWSI(void)
     HINSTANCE hinstance = GetModuleHandle(nullptr);
     HWND hwnd = glfwGetWin32Window(m_window);
 
-    p_wsi = new VK::WSI { instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd };
+    p_wsi = new VK::WSI {};
+    p_wsi->Initialize(instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd);
 }
 
 void App::CreateRenderPass(void)
@@ -227,9 +225,9 @@ void App::CreatePipeline(void)
     const auto& fragmentShaderCode = Utils::ReadFile("./shaders/simple.frag.spv");
 
     VK::Shader vertexShader;
-    vertexShader.Initialize(DEVICE, vertexShaderCode);
+    vertexShader.Initialize(DEVICE->GetHandle(), vertexShaderCode);
     VK::Shader fragmentShader;
-    fragmentShader.Initialize(DEVICE, fragmentShaderCode);
+    fragmentShader.Initialize(DEVICE->GetHandle(), fragmentShaderCode);
 
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
@@ -443,14 +441,13 @@ void App::CreatePipeline(void)
 
 void App::CreateCommandPool(void)
 {
-    commandPool.Initialize(DEVICE, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    commandPool.Initialize(DEVICE->GetHandle(), DEVICE->GetGraphicQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
 void App::CreateCommandBuffer()
 {
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        // m_frameData[i].commandBuffer = commandPool.AllocateCommandBuffer();
-        m_frameData[i].commandBuffer.Initialize(DEVICE, &commandPool);
+        m_frameData[i].commandBuffer = commandPool.AllocateCommandBuffer(DEVICE->GetGrahpicsQueue());
     }
 }
 
@@ -541,7 +538,7 @@ void App::CreateMesh(void)
         0, 1, 2, 2, 3, 0, //
     };
 
-    m_mesh = new Mesh { DEVICE, vertices, indices };
+    m_mesh = new Mesh { DEVICE, ALLOCATOR, COMMANDPOOL, vertices, indices };
 }
 
 void App::CreateUniformBuffer(void)
@@ -551,8 +548,7 @@ void App::CreateUniformBuffer(void)
     VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        // m_frameData[i].globalUBO = DEVICE->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
-        m_frameData[i].globalUBO.Initialize(DEVICE->GetMemoryAllocator(), bufferSize, bufferUsage, allocationFlags);
+        m_frameData[i].globalUBO = ALLOCATOR->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
     }
 }
 
@@ -660,15 +656,14 @@ void App::CreateDepthResources(void)
 {
     VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
 
-    depthImage.Initialize(
-        DEVICE->GetMemoryAllocator(),
-        SWAPCHAIN->GetExtent().width,
-        SWAPCHAIN->GetExtent().height,
+    VkExtent3D extent3D = { SWAPCHAIN->GetExtent().width, SWAPCHAIN->GetExtent().height, 1 };
+    depthImage = ALLOCATOR->CreateImage(
+        extent3D,
         depthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-    depthImageView = depthImage.CreateView(DEVICE, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    depthImageView = depthImage.CreateView(DEVICE->GetHandle(), depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void App::CreateTexture(void)
@@ -684,19 +679,19 @@ void App::CreateTexture(void)
     VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VK::Buffer stagingBuffer;
-    stagingBuffer.Initialize(DEVICE->GetMemoryAllocator(), imageSize, stagingBufferUsage, stagingBufferAllocationFlags);
+    VK::Buffer stagingBuffer = ALLOCATOR->CreateBuffer(imageSize, stagingBufferUsage, stagingBufferAllocationFlags);
     stagingBuffer.CopyData(pixels, imageSize);
 
     stbi_image_free(pixels);
 
-    texture.Initialize(DEVICE->GetMemoryAllocator(), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    VkExtent3D extent3D = { static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1 };
 
-    TransitionImageLayout(texture.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    VK::Image::CopyBufferToImage(DEVICE, &stagingBuffer, &texture, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    TransitionImageLayout(texture.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    texture = ALLOCATOR->CreateImage(extent3D, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-    textureImageView = texture.CreateView(DEVICE, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    texture.TransitionLayout(COMMANDPOOL->AllocateCommandBuffer(DEVICE->GetGrahpicsQueue()), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    stagingBuffer.CopyToImage(COMMANDPOOL->AllocateCommandBuffer(DEVICE->GetGrahpicsQueue()), texture.GetHandle(), extent3D);
+    texture.TransitionLayout(COMMANDPOOL->AllocateCommandBuffer(DEVICE->GetGrahpicsQueue()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    textureImageView = texture.CreateView(DEVICE->GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void App::CreateSampler()
@@ -726,57 +721,6 @@ void App::CreateSampler()
     };
 
     CHECK_VK(vkCreateSampler(DEVICE->GetHandle(), &samplerInfo, nullptr, &textureSampler), "Failed to create texture sampler.");
-}
-
-void App::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
-{
-    VK::CommandBuffer commandBuffer = DEVICE->GetCommandPool()->AllocateCommandBuffer();
-    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VkImageSubresourceRange subresourceRange {
-        .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
-        .baseMipLevel { 0 },
-        .levelCount { 1 },
-        .baseArrayLayer { 0 },
-        .layerCount { 1 },
-    };
-
-    VkImageMemoryBarrier barrier {
-        .sType { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER },
-        .pNext { nullptr },
-        .srcAccessMask {},
-        .dstAccessMask {},
-        .oldLayout { oldLayout },
-        .newLayout { newLayout },
-        .srcQueueFamilyIndex { VK_QUEUE_FAMILY_IGNORED },
-        .dstQueueFamilyIndex { VK_QUEUE_FAMILY_IGNORED },
-        .image { image },
-        .subresourceRange { subresourceRange }
-    };
-
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
-
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else {
-        throw std::invalid_argument("unsupported layout transition!");
-    }
-
-    vkCmdPipelineBarrier(commandBuffer.GetHandle(), sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-    commandBuffer.EndRecording();
-    commandBuffer.Submit(DEVICE->GetGrahpicsQueue());
 }
 
 void App::Update(void)
@@ -811,7 +755,7 @@ void App::Render(void)
     VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     std::vector<VkSemaphore> signalSemaphores = { CURRENT_FRAME.renderFinishedSemaphore };
 
-    commandBuffer.Submit(DEVICE->GetGrahpicsQueue(), waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence);
+    commandBuffer.Submit(waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence);
 
     VkSwapchainKHR swapChains[] = { SWAPCHAIN->GetHandle() };
 

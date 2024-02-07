@@ -29,7 +29,6 @@ private:
 
     void CreateSampler();
 
-    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     void Update(void);
     void Render(void);
 

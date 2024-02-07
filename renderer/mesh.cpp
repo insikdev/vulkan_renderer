@@ -1,8 +1,10 @@
 #include "pch.h"
 #include "mesh.h"
 
-Mesh::Mesh(VK::Device* pDevice, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+Mesh::Mesh(const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
     : p_device { pDevice }
+    , p_allocator { pAllocator }
+    , p_commandPool { pCommandPool }
     , m_indexCount { static_cast<uint32_t>(indices.size()) }
 {
     CreateVertexBuffer(vertices);
@@ -42,14 +44,13 @@ void Mesh::CreateVertexBuffer(const std::vector<Vertex>& vertices)
     VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VK::Buffer stagingBuffer;
-    stagingBuffer.Initialize(p_device->GetMemoryAllocator(), bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
+    VK::Buffer stagingBuffer = p_allocator->CreateBuffer(bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
     stagingBuffer.CopyData((void*)vertices.data(), bufferSize);
 
     VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    m_vertexBuffer.Initialize(p_device->GetMemoryAllocator(), bufferSize, bufferUsage);
+    m_vertexBuffer = p_allocator->CreateBuffer(bufferSize, bufferUsage);
 
-    VK::Buffer::CopyBufferToBuffer(p_device, &stagingBuffer, &m_vertexBuffer, bufferSize);
+    stagingBuffer.CopyToBuffer(p_commandPool->AllocateCommandBuffer(p_device->GetGrahpicsQueue()), m_vertexBuffer.GetHandle(), bufferSize);
 }
 
 void Mesh::CreateIndexBuffer(const std::vector<uint32_t>& indices)
@@ -59,13 +60,12 @@ void Mesh::CreateIndexBuffer(const std::vector<uint32_t>& indices)
     VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VK::Buffer stagingBuffer;
-    stagingBuffer.Initialize(p_device->GetMemoryAllocator(), bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
+    VK::Buffer stagingBuffer = p_allocator->CreateBuffer(bufferSize, stagingBufferUsage, stagingBufferAllocationFlags);
     stagingBuffer.CopyData((void*)indices.data(), bufferSize);
 
     VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    m_indexBuffer.Initialize(p_device->GetMemoryAllocator(), bufferSize, bufferUsage);
-    VK::Buffer::CopyBufferToBuffer(p_device, &stagingBuffer, &m_indexBuffer, bufferSize);
+    m_indexBuffer = p_allocator->CreateBuffer(bufferSize, bufferUsage);
+    stagingBuffer.CopyToBuffer(p_commandPool->AllocateCommandBuffer(p_device->GetGrahpicsQueue()), m_indexBuffer.GetHandle(), bufferSize);
 }
 
 void Mesh::CreateUniformBuffer(void)
@@ -74,5 +74,5 @@ void Mesh::CreateUniformBuffer(void)
     VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    m_uniformBuffer.Initialize(p_device->GetMemoryAllocator(), bufferSize, bufferUsage, allocationFlags);
+    m_uniformBuffer = p_allocator->CreateBuffer(bufferSize, bufferUsage, allocationFlags);
 }

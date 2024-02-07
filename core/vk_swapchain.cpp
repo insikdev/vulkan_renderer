@@ -1,6 +1,4 @@
 #include "vk_swapchain.h"
-#include "vk_surface.h"
-#include "vk_device.h"
 #include "query.h"
 
 VK::Swapchain::~Swapchain()
@@ -8,19 +6,18 @@ VK::Swapchain::~Swapchain()
     Destroy();
 }
 
-void VK::Swapchain::Initialize(const Surface* pSurface, const Device* pDevice)
+void VK::Swapchain::Initialize(const VkSurfaceKHR& surface, const VkPhysicalDevice& physicalDevice, const VkDevice& device, uint32_t graphicQueueFamilyIndex, uint32_t presentQueueFamilyIndex)
 {
-    assert(m_handle == VK_NULL_HANDLE && pSurface != nullptr && pDevice != nullptr);
+    assert(m_handle == VK_NULL_HANDLE);
 
     {
-        p_surface = pSurface;
-        p_device = pDevice;
+        m_device = device;
     }
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device->GetPhysicalDeviceHandle(), p_surface->GetHandle(), &m_capabilities);
-    m_format = SelectFormat();
-    m_presentMode = SelectPresentMode();
-    CreateSwapchain();
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &m_capabilities);
+    m_format = SelectFormat(physicalDevice, surface);
+    m_presentMode = SelectPresentMode(physicalDevice, surface);
+    CreateSwapchain(surface, graphicQueueFamilyIndex, presentQueueFamilyIndex);
     CreateImageViews();
 }
 
@@ -28,21 +25,19 @@ void VK::Swapchain::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
         for (auto framebuffer : m_framebuffers) {
-            vkDestroyFramebuffer(p_device->GetHandle(), framebuffer, nullptr);
+            vkDestroyFramebuffer(m_device, framebuffer, nullptr);
         }
 
         for (auto& imageView : m_imageViews) {
             imageView.Destroy();
         }
 
-        vkDestroySwapchainKHR(p_device->GetHandle(), m_handle, nullptr);
+        vkDestroySwapchainKHR(m_device, m_handle, nullptr);
         m_handle = VK_NULL_HANDLE;
-        p_surface = nullptr;
-        p_device = nullptr;
     }
 }
 
-void VK::Swapchain::CreateFrameBuffers(VkRenderPass renderPass, VkImageView depthImageView)
+void VK::Swapchain::CreateFrameBuffers(const VkRenderPass& renderPass, const VkImageView& depthImageView)
 {
     assert(m_handle != VK_NULL_HANDLE);
 
@@ -63,13 +58,13 @@ void VK::Swapchain::CreateFrameBuffers(VkRenderPass renderPass, VkImageView dept
             .layers { 1 },
         };
 
-        CHECK_VK(vkCreateFramebuffer(p_device->GetHandle(), &framebufferInfo, nullptr, &m_framebuffers[i]), "Failed to create frame buffer.");
+        CHECK_VK(vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_framebuffers[i]), "Failed to create frame buffer.");
     }
 }
 
-VkSurfaceFormatKHR VK::Swapchain::SelectFormat(void)
+VkSurfaceFormatKHR VK::Swapchain::SelectFormat(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface)
 {
-    const auto& availableFormats = Query::GetSurfaceFormats(p_device->GetPhysicalDeviceHandle(), p_surface->GetHandle());
+    const auto& availableFormats = Query::GetSurfaceFormats(physicalDevice, surface);
 
     if (availableFormats.empty()) {
         throw std::runtime_error("Failed to create swap chain.");
@@ -84,9 +79,9 @@ VkSurfaceFormatKHR VK::Swapchain::SelectFormat(void)
     return availableFormats[0];
 }
 
-VkPresentModeKHR VK::Swapchain::SelectPresentMode(void)
+VkPresentModeKHR VK::Swapchain::SelectPresentMode(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface)
 {
-    const auto& availablePresentModes = Query::GetPresentModes(p_device->GetPhysicalDeviceHandle(), p_surface->GetHandle());
+    const auto& availablePresentModes = Query::GetPresentModes(physicalDevice, surface);
 
     if (availablePresentModes.empty()) {
         throw std::runtime_error("Failed to create swap chain.");
@@ -101,7 +96,7 @@ VkPresentModeKHR VK::Swapchain::SelectPresentMode(void)
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-void VK::Swapchain::CreateSwapchain(void)
+void VK::Swapchain::CreateSwapchain(const VkSurfaceKHR& surface, uint32_t graphicQueueFamilyIndex, uint32_t presentQueueFamilyIndex)
 {
     uint32_t imageCount = m_capabilities.minImageCount + 1;
 
@@ -117,7 +112,7 @@ void VK::Swapchain::CreateSwapchain(void)
         .sType { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR },
         .pNext { nullptr },
         .flags {},
-        .surface { p_surface->GetHandle() },
+        .surface { surface },
         .minImageCount { imageCount },
         .imageFormat { m_format.format },
         .imageColorSpace { m_format.colorSpace },
@@ -134,19 +129,19 @@ void VK::Swapchain::CreateSwapchain(void)
         .oldSwapchain { VK_NULL_HANDLE }
     };
 
-    if (p_device->GetGraphicQueueFamilyIndex() != p_device->GetPresentQueueFamilyIndex()) {
-        uint32_t queueFamilyIndices[] = { p_device->GetGraphicQueueFamilyIndex(), p_device->GetPresentQueueFamilyIndex() };
+    if (graphicQueueFamilyIndex != presentQueueFamilyIndex) {
+        uint32_t queueFamilyIndices[] = { graphicQueueFamilyIndex, presentQueueFamilyIndex };
 
         swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchainCreateInfo.queueFamilyIndexCount = 2;
         swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
     }
 
-    CHECK_VK(vkCreateSwapchainKHR(p_device->GetHandle(), &swapchainCreateInfo, nullptr, &m_handle), "Failed to create swap chain.");
+    CHECK_VK(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_handle), "Failed to create swap chain.");
 
-    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_handle, &imageCount, nullptr);
+    vkGetSwapchainImagesKHR(m_device, m_handle, &imageCount, nullptr);
     m_images.resize(imageCount);
-    vkGetSwapchainImagesKHR(p_device->GetHandle(), m_handle, &imageCount, m_images.data());
+    vkGetSwapchainImagesKHR(m_device, m_handle, &imageCount, m_images.data());
 }
 
 void VK::Swapchain::CreateImageViews(void)
@@ -154,6 +149,6 @@ void VK::Swapchain::CreateImageViews(void)
     m_imageViews.resize(m_images.size());
 
     for (size_t i = 0; i < m_images.size(); i++) {
-        m_imageViews[i].Initialize(p_device, m_images[i], m_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
+        m_imageViews[i].Initialize(m_device, m_images[i], m_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }

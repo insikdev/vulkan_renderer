@@ -1,17 +1,16 @@
 #include "vk_shader.h"
-#include "vk_device.h"
 
 VK::Shader::~Shader()
 {
     Destroy();
 }
 
-void VK::Shader::Initialize(const Device* pDevice, const std::vector<char>& code)
+void VK::Shader::Initialize(const VkDevice& device, const std::vector<char>& code)
 {
-    assert(m_handle == VK_NULL_HANDLE && pDevice != nullptr);
+    assert(m_handle == VK_NULL_HANDLE);
 
     {
-        p_device = pDevice;
+        m_device = device;
     }
 
     VkShaderModuleCreateInfo shaderModuleCreateInfo {
@@ -22,14 +21,13 @@ void VK::Shader::Initialize(const Device* pDevice, const std::vector<char>& code
         .pCode { reinterpret_cast<const uint32_t*>(code.data()) }
     };
 
-    CHECK_VK(vkCreateShaderModule(p_device->GetHandle(), &shaderModuleCreateInfo, nullptr, &m_handle), "Failed to create shader module.");
+    CHECK_VK(vkCreateShaderModule(m_device, &shaderModuleCreateInfo, nullptr, &m_handle), "Failed to create shader module.");
 }
 
 void VK::Shader::Destroy()
 {
     if (m_handle != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(p_device->GetHandle(), m_handle, nullptr);
+        vkDestroyShaderModule(m_device, m_handle, nullptr);
         m_handle = VK_NULL_HANDLE;
-        p_device = nullptr;
     }
 }

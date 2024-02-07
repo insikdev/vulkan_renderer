@@ -3,8 +3,6 @@
 #include "common.h"
 
 namespace VK {
-class Device;
-
 class ImageView {
 public:
     ImageView() = default;
@@ -15,14 +13,14 @@ public:
     ImageView& operator=(ImageView&&) noexcept;
 
 public:
-    void Initialize(const Device* pDevice, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    void Initialize(const VkDevice& device, const VkImage& image, VkFormat format, VkImageAspectFlags aspectFlags);
     void Destroy(void);
 
 public: // getter
     VkImageView GetHandle(void) const { return m_handle; }
 
 private:
-    const Device* p_device { nullptr };
+    VkDevice m_device { VK_NULL_HANDLE };
 
 private:
     VkImageView m_handle { VK_NULL_HANDLE };
