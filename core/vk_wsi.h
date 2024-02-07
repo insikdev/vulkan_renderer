@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common.h"
 #include "vk_instance.h"
 #include "vk_surface.h"
 #include "vk_device.h"

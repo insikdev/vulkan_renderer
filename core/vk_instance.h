@@ -1,5 +1,7 @@
 #pragma once
-#include <vector>
+
+#include "common.h"
+
 namespace VK {
 class Instance {
 public:

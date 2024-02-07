@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "utils.h"
 
 bool Utils::CheckLayerSupport(const std::vector<const char*>& requiredLayers, const std::vector<VkLayerProperties>& supportedLayers)

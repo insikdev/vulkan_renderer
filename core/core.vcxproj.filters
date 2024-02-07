@@ -1,13 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="pch.h" />
     <ClInclude Include="vk_instance.h" />
     <ClInclude Include="vk_device.h" />
     <ClInclude Include="vk_swapchain.h" />
     <ClInclude Include="vk_wsi.h" />
     <ClInclude Include="vk_shader.h" />
-    <ClInclude Include="check_vk.h" />
     <ClInclude Include="vk_surface.h" />
     <ClInclude Include="vk_command_pool.h" />
     <ClInclude Include="vk_command_buffer.h" />
@@ -24,15 +22,14 @@
     <ClInclude Include="vk_buffer.h" />
     <ClInclude Include="vk_image.h" />
     <ClInclude Include="vk_image_view.h" />
+    <ClInclude Include="common.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="pch.cpp" />
     <ClCompile Include="vk_instance.cpp" />
     <ClCompile Include="vk_device.cpp" />
     <ClCompile Include="vk_swapchain.cpp" />
     <ClCompile Include="vk_wsi.cpp" />
     <ClCompile Include="vk_shader.cpp" />
-    <ClCompile Include="check_vk.cpp" />
     <ClCompile Include="vk_surface.cpp" />
     <ClCompile Include="vk_command_pool.cpp" />
     <ClCompile Include="vk_command_buffer.cpp" />

@@ -1,7 +1,5 @@
-#include "pch.h"
 #include "vk_surface.h"
 #include "vk_instance.h"
-#include "check_vk.h"
 
 VK::Surface::~Surface()
 {

@@ -1,7 +1,5 @@
-#include "pch.h"
 #include "vk_image_view.h"
 #include "vk_device.h"
-#include "check_vk.h"
 
 VK::ImageView::~ImageView()
 {

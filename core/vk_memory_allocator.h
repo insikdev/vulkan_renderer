@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vk_mem_alloc.h>
+#include "common.h"
 
 namespace VK {
 class Instance;
@@ -13,8 +13,8 @@ public:
     MemoryAllocator() = default;
     ~MemoryAllocator();
     MemoryAllocator(const MemoryAllocator&) = delete;
-    MemoryAllocator& operator=(const MemoryAllocator&) = delete;
     MemoryAllocator(MemoryAllocator&&) = delete;
+    MemoryAllocator& operator=(const MemoryAllocator&) = delete;
     MemoryAllocator& operator=(MemoryAllocator&&) = delete;
 
 public:

@@ -1,10 +1,7 @@
-#include "pch.h"
 #include "vk_swapchain.h"
 #include "vk_surface.h"
 #include "vk_device.h"
 #include "query.h"
-#include "vk_image_view.h"
-#include "check_vk.h"
 
 VK::Swapchain::~Swapchain()
 {

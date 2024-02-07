@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common.h"
 #include "vk_image_view.h"
 
 namespace VK {
@@ -11,8 +12,8 @@ public:
     Swapchain() = default;
     ~Swapchain();
     Swapchain(const Swapchain&) = delete;
-    Swapchain& operator=(const Swapchain&) = delete;
     Swapchain(Swapchain&&) = delete;
+    Swapchain& operator=(const Swapchain&) = delete;
     Swapchain& operator=(Swapchain&&) = delete;
 
 public:
@@ -24,7 +25,6 @@ public: // getter
     VkSwapchainKHR GetHandle(void) const { return m_handle; }
     VkExtent2D GetExtent(void) const { return m_capabilities.currentExtent; }
     VkSurfaceFormatKHR GetFormat(void) const { return m_format; }
-    // std::vector<VkImageView> GetImageViews(void) const { return m_imageViews; }
     VkFramebuffer GetFrameBuffer(uint32_t index) const { return m_framebuffers[index]; }
 
 private:

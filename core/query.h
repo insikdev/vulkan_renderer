@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common.h"
+
 namespace Query {
 // instance
 std::vector<VkExtensionProperties> GetInstanceExtensions(void);

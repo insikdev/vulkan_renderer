@@ -1,18 +1,30 @@
 #pragma once
 
+#include "common.h"
+
 namespace VK {
+class Device;
+
 class Shader {
 public:
-    Shader(VkDevice device, const std::vector<char>& code);
+    Shader() = default;
     ~Shader();
     Shader(const Shader&) = delete;
+    Shader(Shader&&) = delete;
     Shader& operator=(const Shader&) = delete;
+    Shader& operator=(Shader&&) = delete;
 
 public:
-    VkShaderModule GetHandle(void) const { return m_module; }
+    void Initialize(const Device* pDevice, const std::vector<char>& code);
+    void Destroy(void);
+
+public: // getter
+    VkShaderModule GetHandle(void) const { return m_handle; }
 
 private:
-    VkDevice m_device;
-    VkShaderModule m_module;
+    const Device* p_device { nullptr };
+
+private:
+    VkShaderModule m_handle { VK_NULL_HANDLE };
 };
 }

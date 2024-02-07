@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "query.h"
 
 std::vector<VkExtensionProperties> Query::GetInstanceExtensions(void)

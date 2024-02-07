@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "vk_wsi.h"
 
 #ifdef _WIN32

@@ -1,11 +1,9 @@
-#include "pch.h"
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_surface.h"
 #include "query.h"
 #include "utils.h"
 #include "vk_command_buffer.h"
-#include "check_vk.h"
 
 VK::Device::~Device()
 {

@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "vk_buffer.h"
 #include "vk_device.h"
 #include "vk_command_pool.h"

@@ -1,8 +1,6 @@
-#include "pch.h"
 #include "vk_instance.h"
 #include "query.h"
 #include "utils.h"
-#include "check_vk.h"
 
 VK::Instance::~Instance()
 {

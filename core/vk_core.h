@@ -13,5 +13,3 @@
 
 #include "vk_buffer.h"
 #include "vk_image.h"
-
-#include "check_vk.h"

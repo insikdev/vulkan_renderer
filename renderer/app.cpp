@@ -226,8 +226,10 @@ void App::CreatePipeline(void)
     const auto& vertexShaderCode = Utils::ReadFile("./shaders/simple.vert.spv");
     const auto& fragmentShaderCode = Utils::ReadFile("./shaders/simple.frag.spv");
 
-    VK::Shader vertexShader { DEVICE->GetHandle(), vertexShaderCode };
-    VK::Shader fragmentShader { DEVICE->GetHandle(), fragmentShaderCode };
+    VK::Shader vertexShader;
+    vertexShader.Initialize(DEVICE, vertexShaderCode);
+    VK::Shader fragmentShader;
+    fragmentShader.Initialize(DEVICE, fragmentShaderCode);
 
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },

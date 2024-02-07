@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common.h"
+
 namespace VK {
 class Instance;
 
@@ -22,7 +24,7 @@ public: // getter
     VkSurfaceKHR GetHandle(void) const { return m_handle; }
 
 private:
-    const Instance* p_instance;
+    const Instance* p_instance { nullptr };
     VkSurfaceKHR m_handle { VK_NULL_HANDLE };
 };
 }

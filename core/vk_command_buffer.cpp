@@ -1,8 +1,6 @@
-#include "pch.h"
 #include "vk_command_buffer.h"
 #include "vk_device.h"
 #include "vk_command_pool.h"
-#include "check_vk.h"
 
 VK::CommandBuffer::~CommandBuffer()
 {

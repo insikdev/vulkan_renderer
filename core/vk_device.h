@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common.h"
 #include "vk_command_pool.h"
 #include "vk_memory_allocator.h"
 
@@ -12,8 +13,8 @@ public:
     Device() = default;
     ~Device();
     Device(const Device&) = delete;
-    Device& operator=(const Device&) = delete;
     Device(Device&&) = delete;
+    Device& operator=(const Device&) = delete;
     Device& operator=(Device&&) = delete;
 
 public:
