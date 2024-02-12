@@ -3,6 +3,9 @@
 #include "common.h"
 
 namespace VK {
+class CommandPool;
+class DescriptorPool;
+
 class Device {
 public:
     Device() = default;
@@ -15,6 +18,10 @@ public:
 public:
     void Initialize(const VkInstance& instance, const VkSurfaceKHR& surface, const std::vector<const char*>& requiredExtensions);
     void Destroy(void);
+
+public: // method
+    CommandPool CreateCommandPool(VkCommandPoolCreateFlags createFlags = 0) const;
+    DescriptorPool CreateDescriptorPool(uint32_t maxSets, const std::vector<VkDescriptorPoolSize>& poolSizes, VkDescriptorPoolCreateFlags createFlags = 0) const;
 
 public: // getter
     VkPhysicalDevice GetPhysicalDeviceHandle(void) const { return m_physicalDevice; }

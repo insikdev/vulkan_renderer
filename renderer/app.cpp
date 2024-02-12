@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "app.h"
 #include "utils.h"
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #define CURRENT_FRAME m_frameData[m_currentFrame]
@@ -34,6 +33,7 @@ App::App(uint32_t width, uint32_t height)
 
 App::~App()
 {
+    delete m_model;
     delete m_mesh;
     vkDestroySampler(DEVICE->GetHandle(), textureSampler, nullptr);
     textureImageView.Destroy();
@@ -49,7 +49,7 @@ App::~App()
         m_frameData[i].inFlightFence.Destroy();
     }
 
-    vkDestroyDescriptorPool(DEVICE->GetHandle(), descriptorPool, nullptr);
+    descriptorPool.Destroy();
     commandPool.Destroy();
     vkDestroyDescriptorSetLayout(DEVICE->GetHandle(), descriptorSetLayout, nullptr);
     vkDestroyPipeline(DEVICE->GetHandle(), graphicsPipeline, nullptr);
@@ -129,8 +129,8 @@ void App::CreateRenderPass(void)
         .samples { VK_SAMPLE_COUNT_1_BIT },
         .loadOp { VK_ATTACHMENT_LOAD_OP_CLEAR },
         .storeOp { VK_ATTACHMENT_STORE_OP_STORE },
-        .stencilLoadOp { VK_ATTACHMENT_LOAD_OP_DONT_CARE },
-        .stencilStoreOp { VK_ATTACHMENT_STORE_OP_DONT_CARE },
+        .stencilLoadOp {},
+        .stencilStoreOp {},
         .initialLayout { VK_IMAGE_LAYOUT_UNDEFINED },
         .finalLayout { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR },
     };
@@ -441,7 +441,7 @@ void App::CreatePipeline(void)
 
 void App::CreateCommandPool(void)
 {
-    commandPool.Initialize(DEVICE->GetHandle(), DEVICE->GetGraphicQueueFamilyIndex(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    commandPool = DEVICE->CreateCommandPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
 void App::CreateCommandBuffer()
@@ -500,33 +500,15 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &CURRENT_FRAME.descriptorSets[0], 0, nullptr);
-
-    m_mesh->Draw(commandBuffer);
+    m_model->Render(commandBuffer, pipelineLayout);
 
     vkCmdEndRenderPass(commandBuffer);
 }
 
 void App::CreateMesh(void)
 {
-    std::vector<Vertex> vertices = {
-        { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-        { { 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-        { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-        { { -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
-
-        { { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-        { { 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-        { { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-        { { -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
-    };
-
-    std::vector<uint32_t> indices = {
-        4, 5, 6, 6, 7, 4,
-        0, 1, 2, 2, 3, 0, //
-    };
-
-    m_mesh = new Mesh { DEVICE, ALLOCATOR, COMMANDPOOL, vertices, indices };
+    m_model = new Model {};
+    m_model->ReadFromFile("C:/assets/glTF-Sample-Models/2.0/Box/glTF/Box.gltf", DEVICE, ALLOCATOR, COMMANDPOOL);
 }
 
 void App::CreateUniformBuffer(void)
@@ -551,92 +533,19 @@ void App::CreateDescriptorPool(void)
         p.descriptorCount *= MAX_FRAME;
     }
 
-    VkDescriptorPoolCreateInfo poolInfo {
-        .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO },
-        .pNext { nullptr },
-        .flags {},
-        .maxSets { 1 * MAX_FRAME },
-        .poolSizeCount { static_cast<uint32_t>(pools.size()) },
-        .pPoolSizes { pools.data() }
-    };
+    uint32_t maxSets = 1 * MAX_FRAME;
 
-    CHECK_VK(vkCreateDescriptorPool(DEVICE->GetHandle(), &poolInfo, nullptr, &descriptorPool), "Failed to create descriptor pool.");
+    descriptorPool = DEVICE->CreateDescriptorPool(maxSets, pools);
 }
 
 void App::CreateDescriptorSets(void)
 {
-    VkDescriptorSetAllocateInfo allocInfo {
-        .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO },
-        .pNext {},
-        .descriptorPool { descriptorPool },
-        .descriptorSetCount { 1 },
-        .pSetLayouts { &descriptorSetLayout }
-    };
+    for (auto& m : m_model->m_meshes) {
+        m->m_descriptorSet = descriptorPool.AllocateDescriptorSet(&descriptorSetLayout);
 
-    for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        m_frameData[i].descriptorSets.resize(1);
-        CHECK_VK(vkAllocateDescriptorSets(DEVICE->GetHandle(), &allocInfo, m_frameData[i].descriptorSets.data()), "Failed to allocate descriptor set.");
-
-        VkDescriptorBufferInfo binding0 {
-            .buffer { m_mesh->GetUniformBuffer() },
-            .offset {},
-            .range { sizeof(MeshUniformData) }
-        };
-
-        VkDescriptorBufferInfo binding1 {
-            .buffer { m_frameData[i].globalUBO.GetHandle() },
-            .offset {},
-            .range { sizeof(GlobalUniformData) }
-        };
-
-        VkDescriptorImageInfo binding2 {
-            .sampler { textureSampler },
-            .imageView { textureImageView.GetHandle() },
-            .imageLayout { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
-        };
-
-        VkWriteDescriptorSet write0 {
-            .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
-            .pNext { nullptr },
-            .dstSet { m_frameData[i].descriptorSets[0] },
-            .dstBinding { 0 },
-            .dstArrayElement {},
-            .descriptorCount { 1 },
-            .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
-            .pImageInfo {},
-            .pBufferInfo { &binding0 },
-            .pTexelBufferView {}
-        };
-
-        VkWriteDescriptorSet write1 {
-            .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
-            .pNext { nullptr },
-            .dstSet { m_frameData[i].descriptorSets[0] },
-            .dstBinding { 1 },
-            .dstArrayElement {},
-            .descriptorCount { 1 },
-            .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
-            .pImageInfo {},
-            .pBufferInfo { &binding1 },
-            .pTexelBufferView {}
-        };
-
-        VkWriteDescriptorSet write2 {
-            .sType { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
-            .pNext { nullptr },
-            .dstSet { m_frameData[i].descriptorSets[0] },
-            .dstBinding { 2 },
-            .dstArrayElement {},
-            .descriptorCount { 1 },
-            .descriptorType { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
-            .pImageInfo { &binding2 },
-            .pBufferInfo {},
-            .pTexelBufferView {}
-        };
-
-        std::vector<VkWriteDescriptorSet> writes { write0, write1, write2 };
-
-        vkUpdateDescriptorSets(DEVICE->GetHandle(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+        m->m_descriptorSet.WriteBuffer(0, { m->GetUniformBuffer(), 0, sizeof(MeshUniformData) });
+        m->m_descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
+        m->m_descriptorSet.WriteImage(2, { textureSampler, textureImageView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
     }
 }
 
@@ -645,11 +554,7 @@ void App::CreateDepthResources(void)
     VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
 
     VkExtent3D extent3D = { SWAPCHAIN->GetExtent().width, SWAPCHAIN->GetExtent().height, 1 };
-    depthImage = ALLOCATOR->CreateImage(
-        extent3D,
-        depthFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    depthImage = ALLOCATOR->CreateImage(extent3D, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
     depthImageView = depthImage.CreateView(DEVICE->GetHandle(), depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }

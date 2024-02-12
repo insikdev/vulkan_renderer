@@ -1,17 +1,13 @@
 #include "vk_device.h"
 #include "query.h"
-#include "utils.h"
+#include "vk_command_pool.h"
+#include "vk_descriptor_pool.h"
 
 void VK::Device::Initialize(const VkInstance& instance, const VkSurfaceKHR& surface, const std::vector<const char*>& requiredExtensions)
 {
     assert(m_device == VK_NULL_HANDLE);
 
     m_physicalDevice = SelectPhysicalDevice(instance);
-
-    if (Utils::CheckExtensionSupport(requiredExtensions, Query::GetDeviceExtensions(m_physicalDevice)) == false) {
-        throw std::runtime_error("Required extensions are not supported.");
-    }
-
     SelectQueueIndex(surface);
     CreateLogicalDevice(requiredExtensions);
 }
@@ -25,6 +21,22 @@ void VK::Device::Destroy(void)
         m_graphicsQueue = VK_NULL_HANDLE;
         m_presentQueue = VK_NULL_HANDLE;
     }
+}
+
+VK::CommandPool VK::Device::CreateCommandPool(VkCommandPoolCreateFlags createFlags) const
+{
+    VK::CommandPool commandPool;
+    commandPool.Initialize(m_device, m_graphicsQueueFamilyIndex, createFlags);
+
+    return commandPool;
+}
+
+VK::DescriptorPool VK::Device::CreateDescriptorPool(uint32_t maxSets, const std::vector<VkDescriptorPoolSize>& poolSizes, VkDescriptorPoolCreateFlags createFlags) const
+{
+    VK::DescriptorPool descriptorPool;
+    descriptorPool.Initialize(m_device, createFlags, maxSets, poolSizes);
+
+    return descriptorPool;
 }
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice(const VkInstance& instance)

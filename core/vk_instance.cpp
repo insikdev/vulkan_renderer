@@ -1,18 +1,9 @@
 #include "vk_instance.h"
 #include "query.h"
-#include "utils.h"
 
 void VK::Instance::Initialize(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
 {
     assert(m_handle == VK_NULL_HANDLE);
-
-    if (Utils::CheckLayerSupport(requiredLayers, Query::GetInstanceLayers()) == false) {
-        throw std::runtime_error("Required layers are not supported.");
-    }
-
-    if (Utils::CheckExtensionSupport(requiredExtensions, Query::GetInstanceExtensions()) == false) {
-        throw std::runtime_error("Required extensions are not supported.");
-    }
 
     VkApplicationInfo applicationInfo {
         .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },

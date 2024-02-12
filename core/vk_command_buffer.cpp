@@ -33,7 +33,7 @@ void VK::CommandBuffer::Initialize(const VkDevice& device, const VkCommandPool& 
         m_queueToSubmit = queueToSubmit;
     }
 
-    VkCommandBufferAllocateInfo allocInfo {
+    VkCommandBufferAllocateInfo allocateInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
         .pNext { nullptr },
         .commandPool { m_commandPool },
@@ -41,7 +41,7 @@ void VK::CommandBuffer::Initialize(const VkDevice& device, const VkCommandPool& 
         .commandBufferCount { 1 }
     };
 
-    CHECK_VK(vkAllocateCommandBuffers(m_device, &allocInfo, &m_handle), "Failed to allocate command buffer.");
+    CHECK_VK(vkAllocateCommandBuffers(m_device, &allocateInfo, &m_handle), "Failed to allocate command buffer.");
 }
 
 void VK::CommandBuffer::Destroy(void)

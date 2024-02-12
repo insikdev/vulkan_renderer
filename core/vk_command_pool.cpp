@@ -1,6 +1,25 @@
 #include "vk_command_pool.h"
 #include "vk_command_buffer.h"
 
+VK::CommandPool::CommandPool(CommandPool&& other) noexcept
+    : m_handle { other.m_handle }
+    , m_device { other.m_device }
+{
+    other.m_handle = VK_NULL_HANDLE;
+}
+
+VK::CommandPool& VK::CommandPool::operator=(CommandPool&& other) noexcept
+{
+    if (this != &other) {
+        m_handle = other.m_handle;
+        m_device = other.m_device;
+
+        other.m_handle = VK_NULL_HANDLE;
+    }
+
+    return *this;
+}
+
 void VK::CommandPool::Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
 {
     assert(m_handle == VK_NULL_HANDLE);

@@ -13,11 +13,11 @@
 #include <cassert>
 #include <memory>
 #include <set>
-#include <stdexcept>
+#include <iostream>
 
-inline void CHECK_VK(VkResult result, const char* message)
-{
-    if (result != VK_SUCCESS) {
-        throw std::runtime_error(message);
+#define CHECK_VK(result, message)                                        \
+    if (result != VK_SUCCESS) {                                          \
+        std::cerr << "Error Code: " << result << ". " << message << '\n' \
+                  << __FILE__ << " : " << __LINE__ << std::endl;         \
+        std::exit(EXIT_FAILURE);                                         \
     }
-}

@@ -6,7 +6,7 @@ public:
     ~Mesh();
 
 public:
-    void Draw(const VkCommandBuffer& commandBuffer);
+    void Draw(const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout);
 
 public: // getter
     VkBuffer GetUniformBuffer(void) const { return m_uniformBuffer.GetHandle(); }
@@ -25,6 +25,7 @@ public:
     VK::Buffer m_vertexBuffer;
     VK::Buffer m_indexBuffer;
     VK::Buffer m_uniformBuffer;
+    VK::DescriptorSet m_descriptorSet;
     MeshUniformData m_uniformData;
     uint32_t m_indexCount;
 };

@@ -10,9 +10,9 @@ public:
     CommandPool() = default;
     ~CommandPool() { Destroy(); }
     CommandPool(const CommandPool&) = delete;
-    CommandPool(CommandPool&&) = delete;
+    CommandPool(CommandPool&&) noexcept;
     CommandPool& operator=(const CommandPool&) = delete;
-    CommandPool& operator=(CommandPool&&) = delete;
+    CommandPool& operator=(CommandPool&&) noexcept;
 
 public:
     void Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = 0);

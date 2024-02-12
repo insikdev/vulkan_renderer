@@ -19,7 +19,7 @@ Mesh::~Mesh()
     m_uniformBuffer.Destroy();
 }
 
-void Mesh::Draw(const VkCommandBuffer& commandBuffer)
+void Mesh::Draw(const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout)
 {
     VkBuffer vertexBuffers[] = { m_vertexBuffer.GetHandle() };
     VkDeviceSize offsets[] = { 0 };
@@ -31,8 +31,14 @@ void Mesh::Draw(const VkCommandBuffer& commandBuffer)
     glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 0.0f, 1.0f));
     angle += 0.01f;
 
-    m_uniformData.world = rotate;
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));
+
+    m_uniformData.world = rotate * scale;
     m_uniformBuffer.CopyData(&m_uniformData, sizeof(MeshUniformData));
+
+    VkDescriptorSet descriptorSets[] = { m_descriptorSet.GetHandle() };
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, descriptorSets, 0, nullptr);
 
     vkCmdDrawIndexed(commandBuffer, m_indexCount, 1, 0, 0, 0);
 }
