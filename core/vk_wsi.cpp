@@ -1,6 +1,7 @@
 #include "vk_wsi.h"
 
 void VK::WSI::Initialize(
+    const VkApplicationInfo* pApplicationInfo,
     const std::vector<const char*>& instanceLayers,
     const std::vector<const char*>& instanceExtensions,
     const std::vector<const char*>& deviceExtensions,
@@ -9,7 +10,7 @@ void VK::WSI::Initialize(
 {
     assert(m_initialized == false);
 
-    m_instance.Initialize(instanceLayers, instanceExtensions);
+    m_instance.Initialize(pApplicationInfo, instanceLayers, instanceExtensions);
     m_surface.Initialize(m_instance.GetHandle(), hinstance, hwnd);
     m_device.Initialize(m_instance.GetHandle(), m_surface.GetHandle(), deviceExtensions);
     m_swapchain.Initialize(m_surface.GetHandle(), m_device.GetPhysicalDeviceHandle(), m_device.GetHandle(), m_device.GetGraphicQueueFamilyIndex(), m_device.GetPresentQueueFamilyIndex());

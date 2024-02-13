@@ -13,7 +13,7 @@ public:
     Instance& operator=(Instance&&) = delete;
 
 public:
-    void Initialize(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions);
+    void Initialize(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions);
     void Destroy(void);
 
 public: // getter

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "mesh.h"
-#include "model.h"
+class Model;
 
 class App {
 public:
@@ -44,7 +43,7 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
-    // VkDescriptorPool descriptorPool;
+    VkPipeline wireGraphicsPipeline;
     VK::DescriptorPool descriptorPool;
     VK::CommandPool commandPool;
 
@@ -52,7 +51,6 @@ private:
     static const uint32_t MAX_FRAME = 2;
     FrameData m_frameData[MAX_FRAME];
     uint32_t m_currentFrame {};
-    Mesh* m_mesh;
     Model* m_model;
     VK::Image texture;
     VK::ImageView textureImageView;

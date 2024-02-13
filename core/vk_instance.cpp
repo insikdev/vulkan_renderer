@@ -1,25 +1,14 @@
 #include "vk_instance.h"
-#include "query.h"
 
-void VK::Instance::Initialize(const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
+void VK::Instance::Initialize(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
 {
     assert(m_handle == VK_NULL_HANDLE);
-
-    VkApplicationInfo applicationInfo {
-        .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },
-        .pNext { nullptr },
-        .pApplicationName { nullptr },
-        .applicationVersion { VK_MAKE_VERSION(0, 0, 1) },
-        .pEngineName { nullptr },
-        .engineVersion { VK_MAKE_VERSION(0, 0, 1) },
-        .apiVersion { VK_API_VERSION_1_0 }
-    };
 
     VkInstanceCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .pApplicationInfo { &applicationInfo },
+        .pApplicationInfo { pApplicationInfo },
         .enabledLayerCount { static_cast<uint32_t>(requiredLayers.size()) },
         .ppEnabledLayerNames { requiredLayers.data() },
         .enabledExtensionCount { static_cast<uint32_t>(requiredExtensions.size()) },

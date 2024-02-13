@@ -33,6 +33,7 @@ public: // getter
 
 private:
     VkPhysicalDevice SelectPhysicalDevice(const VkInstance& instance);
+    bool IsPhysicalDeviceSuitable(const VkPhysicalDevice& physicalDevice);
     void SelectQueueIndex(const VkSurfaceKHR& surface);
     void CreateLogicalDevice(const std::vector<const char*>& requiredExtensions);
 

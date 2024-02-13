@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "app.h"
 #include "utils.h"
+#include "model.h"
+#include "mesh.h"
 #include <stb_image.h>
 
 #define CURRENT_FRAME m_frameData[m_currentFrame]
@@ -34,7 +36,6 @@ App::App(uint32_t width, uint32_t height)
 App::~App()
 {
     delete m_model;
-    delete m_mesh;
     vkDestroySampler(DEVICE->GetHandle(), textureSampler, nullptr);
     textureImageView.Destroy();
     depthImageView.Destroy();
@@ -53,6 +54,7 @@ App::~App()
     commandPool.Destroy();
     vkDestroyDescriptorSetLayout(DEVICE->GetHandle(), descriptorSetLayout, nullptr);
     vkDestroyPipeline(DEVICE->GetHandle(), graphicsPipeline, nullptr);
+    vkDestroyPipeline(DEVICE->GetHandle(), wireGraphicsPipeline, nullptr);
     vkDestroyPipelineLayout(DEVICE->GetHandle(), pipelineLayout, nullptr);
     vkDestroyRenderPass(DEVICE->GetHandle(), renderPass, nullptr);
 
@@ -75,7 +77,7 @@ void App::Run(void)
 void App::CreateGLFW(void)
 {
     if (glfwInit() == GLFW_FALSE) {
-        throw std::exception("Failed to initialize app.");
+        std::exit(EXIT_FAILURE);
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -84,24 +86,30 @@ void App::CreateGLFW(void)
     m_window = glfwCreateWindow(m_width, m_height, "Vulkan", nullptr, nullptr);
 
     if (m_window == nullptr) {
-        throw std::exception("Failed to create window.");
+        std::exit(EXIT_FAILURE);
     }
 }
 
 void App::CreateWSI(void)
 {
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    VkApplicationInfo applicationInfo {
+        .sType { VK_STRUCTURE_TYPE_APPLICATION_INFO },
+        .pNext { nullptr },
+        .pApplicationName {},
+        .applicationVersion {},
+        .pEngineName {},
+        .engineVersion {},
+        .apiVersion { VK_API_VERSION_1_0 }
+    };
 
     std::vector<const char*> instanceLayers {};
-    std::vector<const char*> instanceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> instanceExtensions { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
     std::vector<const char*> deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     HINSTANCE hinstance = GetModuleHandle(nullptr);
     HWND hwnd = glfwGetWin32Window(m_window);
 
     p_wsi = new VK::WSI {};
-    p_wsi->Initialize(instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd);
+    p_wsi->Initialize(&applicationInfo, instanceLayers, instanceExtensions, deviceExtensions, hinstance, hwnd);
 }
 
 void App::CreateRenderPass(void)
@@ -417,7 +425,7 @@ void App::CreatePipeline(void)
     VkGraphicsPipelineCreateInfo pipelineInfo {
         .sType { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO },
         .pNext { nullptr },
-        .flags {},
+        .flags { VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT },
         .stageCount { 2 },
         .pStages { shaderStages },
         .pVertexInputState { &vertexInputStateCreateInfo },
@@ -437,6 +445,12 @@ void App::CreatePipeline(void)
     };
 
     CHECK_VK(vkCreateGraphicsPipelines(DEVICE->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline), "Failed to create pipeline");
+
+    rasterizerStateCreateInfo.polygonMode = VK_POLYGON_MODE_LINE;
+    pipelineInfo.flags = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+    pipelineInfo.basePipelineHandle = graphicsPipeline;
+    pipelineInfo.basePipelineIndex = -1;
+    CHECK_VK(vkCreateGraphicsPipelines(DEVICE->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &wireGraphicsPipeline), "Failed to create pipeline");
 }
 
 void App::CreateCommandPool(void)
@@ -481,7 +495,8 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    // vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireGraphicsPipeline);
 
     VkViewport viewport {
         .x { 0.0f },

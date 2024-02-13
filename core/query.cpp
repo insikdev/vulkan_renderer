@@ -2,13 +2,13 @@
 
 std::vector<VkExtensionProperties> Query::GetInstanceExtensions(void)
 {
-    uint32_t extensionCount {};
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    uint32_t count {};
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
 
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    std::vector<VkExtensionProperties> availableExtensions(count);
 
-    if (extensionCount != 0) {
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+    if (count != 0) {
+        vkEnumerateInstanceExtensionProperties(nullptr, &count, availableExtensions.data());
     }
 
     return availableExtensions;
@@ -16,13 +16,13 @@ std::vector<VkExtensionProperties> Query::GetInstanceExtensions(void)
 
 std::vector<VkLayerProperties> Query::GetInstanceLayers(void)
 {
-    uint32_t layerCount {};
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    uint32_t count {};
+    vkEnumerateInstanceLayerProperties(&count, nullptr);
 
-    std::vector<VkLayerProperties> availableLayers(layerCount);
+    std::vector<VkLayerProperties> availableLayers(count);
 
-    if (layerCount != 0) {
-        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    if (count != 0) {
+        vkEnumerateInstanceLayerProperties(&count, availableLayers.data());
     }
 
     return availableLayers;
@@ -30,13 +30,13 @@ std::vector<VkLayerProperties> Query::GetInstanceLayers(void)
 
 std::vector<VkPhysicalDevice> Query::GetPhysicalDevices(const VkInstance& instance)
 {
-    uint32_t deviceCount {};
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    uint32_t count {};
+    vkEnumeratePhysicalDevices(instance, &count, nullptr);
 
-    std::vector<VkPhysicalDevice> availablePhysicalDevices(deviceCount);
+    std::vector<VkPhysicalDevice> availablePhysicalDevices(count);
 
-    if (deviceCount != 0) {
-        vkEnumeratePhysicalDevices(instance, &deviceCount, availablePhysicalDevices.data());
+    if (count != 0) {
+        vkEnumeratePhysicalDevices(instance, &count, availablePhysicalDevices.data());
     }
 
     return availablePhysicalDevices;
@@ -44,13 +44,13 @@ std::vector<VkPhysicalDevice> Query::GetPhysicalDevices(const VkInstance& instan
 
 std::vector<VkExtensionProperties> Query::GetDeviceExtensions(const VkPhysicalDevice& physicalDevice)
 {
-    uint32_t extensionCount {};
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+    uint32_t count {};
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, nullptr);
 
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    std::vector<VkExtensionProperties> availableExtensions(count);
 
-    if (extensionCount != 0) {
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
+    if (count != 0) {
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, availableExtensions.data());
     }
 
     return availableExtensions;
@@ -58,13 +58,13 @@ std::vector<VkExtensionProperties> Query::GetDeviceExtensions(const VkPhysicalDe
 
 std::vector<VkQueueFamilyProperties> Query::GetQueueFamilies(const VkPhysicalDevice& physicalDevice)
 {
-    uint32_t queueFamilyCount {};
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    uint32_t count {};
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, nullptr);
 
-    std::vector<VkQueueFamilyProperties> availableQueueFamilies(queueFamilyCount);
+    std::vector<VkQueueFamilyProperties> availableQueueFamilies(count);
 
-    if (queueFamilyCount != 0) {
-        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, availableQueueFamilies.data());
+    if (count != 0) {
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, availableQueueFamilies.data());
     }
 
     return availableQueueFamilies;
@@ -72,13 +72,13 @@ std::vector<VkQueueFamilyProperties> Query::GetQueueFamilies(const VkPhysicalDev
 
 std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface)
 {
-    uint32_t formatCount {};
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
+    uint32_t count {};
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, nullptr);
 
-    std::vector<VkSurfaceFormatKHR> availableFormats(formatCount);
+    std::vector<VkSurfaceFormatKHR> availableFormats(count);
 
-    if (formatCount != 0) {
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, availableFormats.data());
+    if (count != 0) {
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, availableFormats.data());
     }
 
     return availableFormats;
@@ -86,13 +86,13 @@ std::vector<VkSurfaceFormatKHR> Query::GetSurfaceFormats(const VkPhysicalDevice&
 
 std::vector<VkPresentModeKHR> Query::GetPresentModes(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface)
 {
-    uint32_t presentModeCount {};
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+    uint32_t count {};
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, nullptr);
 
-    std::vector<VkPresentModeKHR> availablePresentModes(presentModeCount);
+    std::vector<VkPresentModeKHR> availablePresentModes(count);
 
-    if (presentModeCount != 0) {
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, availablePresentModes.data());
+    if (count != 0) {
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, availablePresentModes.data());
     }
 
     return availablePresentModes;

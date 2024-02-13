@@ -41,29 +41,31 @@ VK::DescriptorPool VK::Device::CreateDescriptorPool(uint32_t maxSets, const std:
 
 VkPhysicalDevice VK::Device::SelectPhysicalDevice(const VkInstance& instance)
 {
-    const auto& devices = Query::GetPhysicalDevices(instance);
+    const auto& physicalDevices = Query::GetPhysicalDevices(instance);
 
-    if (devices.empty()) {
-        throw std::runtime_error("Failed to find GPUs with Vulkan support.");
+    if (physicalDevices.size() == 1) {
+        return physicalDevices[0];
     }
 
-    if (devices.size() == 1) {
-        return devices[0];
-    }
-
-    for (const auto& device : devices) {
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(device, &deviceProperties);
-
-        VkPhysicalDeviceFeatures deviceFeatures;
-        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-        if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.samplerAnisotropy) {
-            return device;
+    for (const auto& physicalDevice : physicalDevices) {
+        if (IsPhysicalDeviceSuitable(physicalDevice)) {
+            return physicalDevice;
         }
     }
 
-    throw std::runtime_error("Failed to select physical device.");
+    CHECK_VK(VK_ERROR_INITIALIZATION_FAILED, "Failed to find suitable GPU.");
+    return VK_NULL_HANDLE;
+}
+
+bool VK::Device::IsPhysicalDeviceSuitable(const VkPhysicalDevice& physicalDevice)
+{
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+    VkPhysicalDeviceFeatures features;
+    vkGetPhysicalDeviceFeatures(physicalDevice, &features);
+
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
 void VK::Device::SelectQueueIndex(const VkSurfaceKHR& surface)
@@ -113,6 +115,7 @@ void VK::Device::CreateLogicalDevice(const std::vector<const char*>& requiredExt
     }
 
     VkPhysicalDeviceFeatures deviceFeatures {
+        .fillModeNonSolid { VK_TRUE },
         .samplerAnisotropy { VK_TRUE }
     };
 

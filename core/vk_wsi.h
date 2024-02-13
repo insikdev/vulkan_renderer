@@ -19,7 +19,9 @@ public:
     WSI& operator=(WSI&&) = delete;
 
 public:
-    void Initialize(const std::vector<const char*>& instanceLayers,
+    void Initialize(
+        const VkApplicationInfo* pApplicationInfo,
+        const std::vector<const char*>& instanceLayers,
         const std::vector<const char*>& instanceExtensions,
         const std::vector<const char*>& deviceExtensions,
         const HINSTANCE& hinstance,

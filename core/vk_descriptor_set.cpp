@@ -44,7 +44,7 @@ void VK::DescriptorSet::Initialize(const VkDevice& device, const VkDescriptorPoo
 void VK::DescriptorSet::Destroy(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        vkFreeDescriptorSets(m_device, m_descriptorPool, 1, &m_handle);
+        // vkFreeDescriptorSets(m_device, m_descriptorPool, 1, &m_handle);
         m_handle = VK_NULL_HANDLE;
     }
 }
