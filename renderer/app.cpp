@@ -4,6 +4,7 @@
 #include "model.h"
 #include "mesh.h"
 #include <stb_image.h>
+#include "gui.h"
 
 #define CURRENT_FRAME m_frameData[m_currentFrame]
 #define DEVICE p_wsi->GetDevice()
@@ -31,10 +32,13 @@ App::App(uint32_t width, uint32_t height)
     CreateUniformBuffer();
     CreateDescriptorPool();
     CreateDescriptorSets();
-}
+
+    p_gui = new GUI { m_window, p_wsi, renderPass };
+};
 
 App::~App()
 {
+    delete p_gui;
     delete m_model;
     vkDestroySampler(DEVICE->GetHandle(), textureSampler, nullptr);
     textureImageView.Destroy();
@@ -516,6 +520,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     m_model->Render(commandBuffer, pipelineLayout);
+    p_gui->Render(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
 }

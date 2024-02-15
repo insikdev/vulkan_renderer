@@ -1,6 +1,7 @@
 #pragma once
 
 class Model;
+class GUI;
 
 class App {
 public:
@@ -39,6 +40,7 @@ private:
 
 private:
     VK::WSI* p_wsi;
+    GUI* p_gui;
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;

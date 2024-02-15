@@ -29,6 +29,7 @@ public:
     void Destroy(void);
 
 public: // getter
+    const Instance* GetInstance(void) const { return &m_instance; }
     const Device* GetDevice(void) const { return &m_device; }
     Swapchain* GetSwapchain(void) { return &m_swapchain; }
     const CommandPool* GetCommandPool(void) const { return &m_commandPool; }
