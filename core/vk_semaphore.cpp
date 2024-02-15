@@ -1,6 +1,6 @@
 #include "vk_semaphore.h"
 
-void VK::Semaphore::Initialize(const VkDevice& device)
+VkResult VK::Semaphore::Init(VkDevice device)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -10,11 +10,11 @@ void VK::Semaphore::Initialize(const VkDevice& device)
 
     VkSemaphoreCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags {}
     };
 
-    CHECK_VK(vkCreateSemaphore(m_device, &createInfo, nullptr, &m_handle), "Failed to create semaphore.");
+    return vkCreateSemaphore(m_device, &createInfo, nullptr, &m_handle);
 }
 
 void VK::Semaphore::Destroy(void)

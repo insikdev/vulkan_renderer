@@ -5,7 +5,9 @@ int main(int agrc, char** argv)
 {
     const uint32_t width { 1280 };
     const uint32_t height { 720 };
-    App app { width, height };
+
+    App app;
+    app.Init(width, height);
     app.Run();
 
     return 0;

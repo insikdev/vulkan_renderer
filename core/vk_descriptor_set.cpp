@@ -21,7 +21,7 @@ VK::DescriptorSet& VK::DescriptorSet::operator=(DescriptorSet&& other) noexcept
     return *this;
 }
 
-void VK::DescriptorSet::Initialize(const VkDevice& device, const VkDescriptorPool& descriptorPool, const VkDescriptorSetLayout* pSetLayouts)
+VkResult VK::DescriptorSet::Init(VkDevice device, VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* pSetLayouts)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -32,13 +32,13 @@ void VK::DescriptorSet::Initialize(const VkDevice& device, const VkDescriptorPoo
 
     VkDescriptorSetAllocateInfo allocateInfo {
         .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .descriptorPool { descriptorPool },
         .descriptorSetCount { 1 },
         .pSetLayouts { pSetLayouts }
     };
 
-    CHECK_VK(vkAllocateDescriptorSets(m_device, &allocateInfo, &m_handle), "Failed to allocate descriptor set.");
+    return vkAllocateDescriptorSets(m_device, &allocateInfo, &m_handle);
 }
 
 void VK::DescriptorSet::Destroy(void)

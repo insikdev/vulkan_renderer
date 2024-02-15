@@ -13,16 +13,14 @@ public:
     Fence& operator=(Fence&&) = delete;
 
 public:
-    void Initialize(const VkDevice& device, VkFenceCreateFlags createFlags);
+    VkResult Init(VkDevice device, VkFenceCreateFlags createFlags);
     void Destroy(void);
 
-public: // getter
+public:
     VkFence GetHandle(void) const { return m_handle; }
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
-
-private:
     VkFence m_handle { VK_NULL_HANDLE };
 };
 }

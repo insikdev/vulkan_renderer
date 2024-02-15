@@ -13,25 +13,21 @@ public:
     CommandBuffer& operator=(CommandBuffer&&) noexcept;
 
 public:
-    void Initialize(const VkDevice& device, const VkCommandPool& commandPool, const VkQueue& queueToSubmit);
+    VkResult Init(VkDevice device, VkCommandPool commandPool, VkQueue queue);
     void Destroy(void);
 
-public: // method
-    void BeginRecording(VkCommandBufferUsageFlags usageFlags = 0) const;
-    void EndRecording(void) const;
-    void Reset(void) const;
+public:
+    VkCommandBuffer GetHandle(void) const { return m_handle; }
+    VkResult BeginRecording(VkCommandBufferUsageFlags usageFlags = 0) const;
+    VkResult EndRecording(void) const;
+    VkResult Reset(void) const;
     void Submit(void) const;
     void Submit(const std::vector<VkSemaphore>& waitSemaphores, const std::vector<VkSemaphore>& signalSemaphores, VkFence fence) const;
-
-public: // getter
-    VkCommandBuffer GetHandle(void) const { return m_handle; }
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
     VkCommandPool m_commandPool { VK_NULL_HANDLE };
-    VkQueue m_queueToSubmit { VK_NULL_HANDLE };
-
-private:
+    VkQueue m_queue { VK_NULL_HANDLE };
     VkCommandBuffer m_handle { VK_NULL_HANDLE };
 };
 }

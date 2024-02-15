@@ -13,16 +13,14 @@ public:
     Shader& operator=(Shader&&) = delete;
 
 public:
-    void Initialize(const VkDevice& device, const std::vector<char>& code);
+    VkResult Init(VkDevice device, const std::vector<char>& code);
     void Destroy(void);
 
-public: // getter
+public:
     VkShaderModule GetHandle(void) const { return m_handle; }
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
-
-private:
     VkShaderModule m_handle { VK_NULL_HANDLE };
 };
 }

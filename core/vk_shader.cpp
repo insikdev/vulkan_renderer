@@ -1,6 +1,6 @@
 #include "vk_shader.h"
 
-void VK::Shader::Initialize(const VkDevice& device, const std::vector<char>& code)
+VkResult VK::Shader::Init(VkDevice device, const std::vector<char>& code)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -8,15 +8,15 @@ void VK::Shader::Initialize(const VkDevice& device, const std::vector<char>& cod
         m_device = device;
     }
 
-    VkShaderModuleCreateInfo shaderModuleCreateInfo {
+    VkShaderModuleCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags {},
         .codeSize { code.size() },
         .pCode { reinterpret_cast<const uint32_t*>(code.data()) }
     };
 
-    CHECK_VK(vkCreateShaderModule(m_device, &shaderModuleCreateInfo, nullptr, &m_handle), "Failed to create shader module.");
+    return vkCreateShaderModule(m_device, &createInfo, nullptr, &m_handle);
 }
 
 void VK::Shader::Destroy()

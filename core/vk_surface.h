@@ -13,16 +13,14 @@ public:
     Surface& operator=(Surface&&) = delete;
 
 public:
-    void Initialize(const VkInstance& instance, const HINSTANCE& hinstance, const HWND& hwnd);
+    VkResult Init(VkInstance instance, HINSTANCE hinstance, HWND hwnd);
     void Destroy(void);
 
-public: // getter
+public:
     VkSurfaceKHR GetHandle(void) const { return m_handle; }
 
 private:
     VkInstance m_instance { VK_NULL_HANDLE };
-
-private:
     VkSurfaceKHR m_handle { VK_NULL_HANDLE };
 };
 }

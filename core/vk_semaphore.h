@@ -13,16 +13,14 @@ public:
     Semaphore& operator=(Semaphore&&) = delete;
 
 public:
-    void Initialize(const VkDevice& device);
+    VkResult Init(VkDevice device);
     void Destroy(void);
 
-public: // getter
+public:
     VkSemaphore GetHandle(void) const { return m_handle; }
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
-
-private:
     VkSemaphore m_handle { VK_NULL_HANDLE };
 };
 }

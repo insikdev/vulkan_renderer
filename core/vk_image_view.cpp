@@ -19,7 +19,7 @@ VK::ImageView& VK::ImageView::operator=(ImageView&& other) noexcept
     return *this;
 }
 
-void VK::ImageView::Initialize(const VkDevice& device, const VkImage& image, VkFormat format, VkImageAspectFlags aspectFlags)
+VkResult VK::ImageView::Init(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -53,7 +53,7 @@ void VK::ImageView::Initialize(const VkDevice& device, const VkImage& image, VkF
         .subresourceRange { subresourceRange },
     };
 
-    CHECK_VK(vkCreateImageView(m_device, &createInfo, nullptr, &m_handle), "Failed to create image view.");
+    return vkCreateImageView(m_device, &createInfo, nullptr, &m_handle);
 }
 
 void VK::ImageView::Destroy(void)

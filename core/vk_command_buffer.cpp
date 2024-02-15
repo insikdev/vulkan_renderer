@@ -4,7 +4,7 @@ VK::CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept
     : m_handle { other.m_handle }
     , m_device { other.m_device }
     , m_commandPool { other.m_commandPool }
-    , m_queueToSubmit { other.m_queueToSubmit }
+    , m_queue { other.m_queue }
 {
     other.m_handle = VK_NULL_HANDLE;
 }
@@ -15,7 +15,7 @@ VK::CommandBuffer& VK::CommandBuffer::operator=(CommandBuffer&& other) noexcept
         m_handle = other.m_handle;
         m_device = other.m_device;
         m_commandPool = other.m_commandPool;
-        m_queueToSubmit = other.m_queueToSubmit;
+        m_queue = other.m_queue;
 
         other.m_handle = VK_NULL_HANDLE;
     }
@@ -23,14 +23,14 @@ VK::CommandBuffer& VK::CommandBuffer::operator=(CommandBuffer&& other) noexcept
     return *this;
 }
 
-void VK::CommandBuffer::Initialize(const VkDevice& device, const VkCommandPool& commandPool, const VkQueue& queueToSubmit)
+VkResult VK::CommandBuffer::Init(VkDevice device, VkCommandPool commandPool, VkQueue queue)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
     {
         m_device = device;
         m_commandPool = commandPool;
-        m_queueToSubmit = queueToSubmit;
+        m_queue = queue;
     }
 
     VkCommandBufferAllocateInfo allocateInfo {
@@ -41,7 +41,7 @@ void VK::CommandBuffer::Initialize(const VkDevice& device, const VkCommandPool& 
         .commandBufferCount { 1 }
     };
 
-    CHECK_VK(vkAllocateCommandBuffers(m_device, &allocateInfo, &m_handle), "Failed to allocate command buffer.");
+    return vkAllocateCommandBuffers(m_device, &allocateInfo, &m_handle);
 }
 
 void VK::CommandBuffer::Destroy(void)
@@ -52,7 +52,7 @@ void VK::CommandBuffer::Destroy(void)
     }
 }
 
-void VK::CommandBuffer::BeginRecording(VkCommandBufferUsageFlags usageFlags) const
+VkResult VK::CommandBuffer::BeginRecording(VkCommandBufferUsageFlags usageFlags) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
@@ -63,22 +63,22 @@ void VK::CommandBuffer::BeginRecording(VkCommandBufferUsageFlags usageFlags) con
         .pInheritanceInfo {}
     };
 
-    CHECK_VK(vkBeginCommandBuffer(m_handle, &beginInfo), "");
+    return vkBeginCommandBuffer(m_handle, &beginInfo);
 }
 
-void VK::CommandBuffer::EndRecording(void) const
+VkResult VK::CommandBuffer::EndRecording(void) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
-    CHECK_VK(vkEndCommandBuffer(m_handle), "");
+    return vkEndCommandBuffer(m_handle);
 }
 
-void VK::CommandBuffer::Reset(void) const
+// CommandBuffer must have been allocated from a pool that was created with the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+VkResult VK::CommandBuffer::Reset(void) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
-    CHECK_VK(vkResetCommandBuffer(m_handle, 0), "");
-    // CommandBuffer must have been allocated from a pool that was created with the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+    return vkResetCommandBuffer(m_handle, 0);
 }
 
 void VK::CommandBuffer::Submit() const
@@ -104,6 +104,6 @@ void VK::CommandBuffer::Submit(const std::vector<VkSemaphore>& waitSemaphores, c
         .pSignalSemaphores { signalSemaphores.data() }
     };
 
-    CHECK_VK(vkQueueSubmit(m_queueToSubmit, 1, &submitInfo, fence), "Failed to submit command buffer.");
-    CHECK_VK(vkQueueWaitIdle(m_queueToSubmit), "");
+    CHECK_VK(vkQueueSubmit(m_queue, 1, &submitInfo, fence), "Failed to submit command buffer.");
+    CHECK_VK(vkQueueWaitIdle(m_queue), "");
 }

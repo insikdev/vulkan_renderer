@@ -1,139 +1,46 @@
 #include "vk_device.h"
-#include "query.h"
-#include "vk_command_pool.h"
-#include "vk_descriptor_pool.h"
 
-void VK::Device::Initialize(const VkInstance& instance, const VkSurfaceKHR& surface, const std::vector<const char*>& requiredExtensions)
+VkResult VK::Device::Init(VkPhysicalDevice physicalDevice, const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, const std::vector<const char*>& enabledExtensions, const VkPhysicalDeviceFeatures* pEnabledFeatures)
 {
-    assert(m_device == VK_NULL_HANDLE);
+    assert(m_handle == VK_NULL_HANDLE);
 
-    m_physicalDevice = SelectPhysicalDevice(instance);
-    SelectQueueIndex(surface);
-    CreateLogicalDevice(requiredExtensions);
+    VkDeviceCreateInfo createInfo {
+        .sType { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO },
+        .pNext {},
+        .flags {},
+        .queueCreateInfoCount { static_cast<uint32_t>(queueCreateInfos.size()) },
+        .pQueueCreateInfos { queueCreateInfos.data() },
+        .enabledLayerCount { /* deprecated */ },
+        .ppEnabledLayerNames { /* deprecated */ },
+        .enabledExtensionCount { static_cast<uint32_t>(enabledExtensions.size()) },
+        .ppEnabledExtensionNames { enabledExtensions.data() },
+        .pEnabledFeatures { pEnabledFeatures }
+    };
+
+    return vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_handle);
 }
 
 void VK::Device::Destroy(void)
 {
-    if (m_device != VK_NULL_HANDLE) {
-        vkDestroyDevice(m_device, nullptr);
-        m_physicalDevice = VK_NULL_HANDLE;
-        m_device = VK_NULL_HANDLE;
-        m_graphicsQueue = VK_NULL_HANDLE;
-        m_presentQueue = VK_NULL_HANDLE;
+    if (m_handle != VK_NULL_HANDLE) {
+        vkDestroyDevice(m_handle, nullptr);
+        m_handle = VK_NULL_HANDLE;
     }
 }
 
-VK::CommandPool VK::Device::CreateCommandPool(VkCommandPoolCreateFlags createFlags) const
+VkQueue VK::Device::GetQueue(uint32_t queueFamilyIndex) const
 {
-    VK::CommandPool commandPool;
-    commandPool.Initialize(m_device, m_graphicsQueueFamilyIndex, createFlags);
+    assert(m_handle != VK_NULL_HANDLE);
 
-    return commandPool;
+    VkQueue queue;
+    vkGetDeviceQueue(m_handle, queueFamilyIndex, 0, &queue);
+
+    return queue;
 }
 
-VK::DescriptorPool VK::Device::CreateDescriptorPool(uint32_t maxSets, const std::vector<VkDescriptorPoolSize>& poolSizes, VkDescriptorPoolCreateFlags createFlags) const
+VkResult VK::Device::WaitIdle(void) const
 {
-    VK::DescriptorPool descriptorPool;
-    descriptorPool.Initialize(m_device, createFlags, maxSets, poolSizes);
+    assert(m_handle != VK_NULL_HANDLE);
 
-    return descriptorPool;
-}
-
-VkPhysicalDevice VK::Device::SelectPhysicalDevice(const VkInstance& instance)
-{
-    const auto& physicalDevices = Query::GetPhysicalDevices(instance);
-
-    if (physicalDevices.size() == 1) {
-        return physicalDevices[0];
-    }
-
-    for (const auto& physicalDevice : physicalDevices) {
-        if (IsPhysicalDeviceSuitable(physicalDevice)) {
-            return physicalDevice;
-        }
-    }
-
-    CHECK_VK(VK_ERROR_INITIALIZATION_FAILED, "Failed to find suitable GPU.");
-    return VK_NULL_HANDLE;
-}
-
-bool VK::Device::IsPhysicalDeviceSuitable(const VkPhysicalDevice& physicalDevice)
-{
-    VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-    VkPhysicalDeviceFeatures features;
-    vkGetPhysicalDeviceFeatures(physicalDevice, &features);
-
-    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-}
-
-void VK::Device::SelectQueueIndex(const VkSurfaceKHR& surface)
-{
-    const auto& queueFamilies = Query::GetQueueFamilies(m_physicalDevice);
-
-    for (size_t i = 0; i < queueFamilies.size(); i++) {
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            m_graphicsQueueFamilyIndex = static_cast<uint32_t>(i);
-        }
-
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(m_physicalDevice, static_cast<uint32_t>(i), surface, &presentSupport);
-
-        if (presentSupport) {
-            m_presentQueueFamilyIndex = static_cast<uint32_t>(i);
-        }
-
-        if (m_graphicsQueueFamilyIndex != UINT32_MAX && m_presentQueueFamilyIndex != UINT32_MAX) {
-            break;
-        }
-    }
-
-    if (m_graphicsQueueFamilyIndex == UINT32_MAX || m_presentQueueFamilyIndex == UINT32_MAX) {
-        throw std::runtime_error("Failed to find queue family.");
-    }
-}
-
-void VK::Device::CreateLogicalDevice(const std::vector<const char*>& requiredExtensions)
-{
-    float queuePriority = 1.0f;
-
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t> uniqueQueueFamilies = { m_graphicsQueueFamilyIndex, m_presentQueueFamilyIndex };
-
-    for (uint32_t queueFamily : uniqueQueueFamilies) {
-        VkDeviceQueueCreateInfo deviceQueueCreateInfo {
-            .sType { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO },
-            .pNext { nullptr },
-            .flags {},
-            .queueFamilyIndex { queueFamily },
-            .queueCount { 1 },
-            .pQueuePriorities { &queuePriority }
-        };
-
-        queueCreateInfos.push_back(deviceQueueCreateInfo);
-    }
-
-    VkPhysicalDeviceFeatures deviceFeatures {
-        .fillModeNonSolid { VK_TRUE },
-        .samplerAnisotropy { VK_TRUE }
-    };
-
-    VkDeviceCreateInfo deviceCreateInfo {
-        .sType { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO },
-        .pNext { nullptr },
-        .flags {},
-        .queueCreateInfoCount { static_cast<uint32_t>(queueCreateInfos.size()) },
-        .pQueueCreateInfos { queueCreateInfos.data() },
-        .enabledLayerCount { /* deprecated and ignored */ },
-        .ppEnabledLayerNames { /* deprecated and ignored */ },
-        .enabledExtensionCount { static_cast<uint32_t>(requiredExtensions.size()) },
-        .ppEnabledExtensionNames { requiredExtensions.data() },
-        .pEnabledFeatures { &deviceFeatures }
-    };
-
-    CHECK_VK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device), "Failed to create logical device.");
-
-    vkGetDeviceQueue(m_device, m_graphicsQueueFamilyIndex, 0, &m_graphicsQueue);
-    vkGetDeviceQueue(m_device, m_presentQueueFamilyIndex, 0, &m_presentQueue);
+    return vkDeviceWaitIdle(m_handle);
 }

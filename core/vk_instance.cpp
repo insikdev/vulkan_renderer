@@ -1,21 +1,21 @@
 #include "vk_instance.h"
 
-void VK::Instance::Initialize(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions)
+VkResult VK::Instance::Init(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& enabledLayerCount, const std::vector<const char*>& enabledExtensions)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
     VkInstanceCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags {},
         .pApplicationInfo { pApplicationInfo },
-        .enabledLayerCount { static_cast<uint32_t>(requiredLayers.size()) },
-        .ppEnabledLayerNames { requiredLayers.data() },
-        .enabledExtensionCount { static_cast<uint32_t>(requiredExtensions.size()) },
-        .ppEnabledExtensionNames { requiredExtensions.data() }
+        .enabledLayerCount { static_cast<uint32_t>(enabledLayerCount.size()) },
+        .ppEnabledLayerNames { enabledLayerCount.data() },
+        .enabledExtensionCount { static_cast<uint32_t>(enabledExtensions.size()) },
+        .ppEnabledExtensionNames { enabledExtensions.data() }
     };
 
-    CHECK_VK(vkCreateInstance(&createInfo, nullptr, &m_handle), "Failed to create instance.");
+    return vkCreateInstance(&createInfo, nullptr, &m_handle);
 }
 
 void VK::Instance::Destroy(void)
@@ -24,4 +24,20 @@ void VK::Instance::Destroy(void)
         vkDestroyInstance(m_handle, nullptr);
         m_handle = VK_NULL_HANDLE;
     }
+}
+
+std::vector<VkPhysicalDevice> VK::Instance::GetPhysicalDevices(void) const
+{
+    assert(m_handle != VK_NULL_HANDLE);
+
+    uint32_t count {};
+    vkEnumeratePhysicalDevices(m_handle, &count, nullptr);
+
+    std::vector<VkPhysicalDevice> physicalDevices(count);
+
+    if (count != 0) {
+        vkEnumeratePhysicalDevices(m_handle, &count, physicalDevices.data());
+    }
+
+    return physicalDevices;
 }

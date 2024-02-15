@@ -13,11 +13,12 @@ public:
     Instance& operator=(Instance&&) = delete;
 
 public:
-    void Initialize(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& requiredLayers, const std::vector<const char*>& requiredExtensions);
+    VkResult Init(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& enabledLayers, const std::vector<const char*>& enabledExtensions);
     void Destroy(void);
 
-public: // getter
+public:
     VkInstance GetHandle(void) const { return m_handle; }
+    std::vector<VkPhysicalDevice> GetPhysicalDevices(void) const;
 
 private:
     VkInstance m_handle { VK_NULL_HANDLE };

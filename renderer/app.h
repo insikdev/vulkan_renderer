@@ -5,27 +5,28 @@ class GUI;
 
 class App {
 public:
-    App(uint32_t width, uint32_t height);
-    ~App();
+    App() = default;
+    ~App() { Destroy(); }
+    App(const App&) = delete;
+    App(App&&) = delete;
+    App& operator=(const App&) = delete;
+    App& operator=(App&&) = delete;
 
 public:
+    void Init(uint32_t width, uint32_t height);
+    void Destroy(void);
     void Run(void);
 
 private:
-    void CreateGLFW(void);
-    void CreateWSI(void);
-    void CreateRenderPass(void);
-    void CreateDescriptorSetLayout(void);
-    void CreatePipeline(void);
-    void CreateCommandPool(void);
-    void CreateCommandBuffer();
-    void CreateSyncObjects(void);
+    void InitGLFW(uint32_t width, uint32_t height);
+    void InitVulkan(void);
+    void InitPipeline(void);
+    void InitFrameBuffer(void);
+
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void CreateMesh(void);
     void CreateUniformBuffer(void);
-    void CreateDescriptorPool(void);
     void CreateDescriptorSets(void);
-    void CreateDepthResources(void);
     void CreateTexture(void);
 
     void CreateSampler();
@@ -38,16 +39,30 @@ private:
     uint32_t m_height;
     GLFWwindow* m_window;
 
+private: // vulkan object
+    VK::Instance m_instance;
+    VK::Surface m_surface;
+    VK::PhysicalDevice m_physicalDevice;
+    VK::Device m_device;
+    VkQueue m_graphicsQueue;
+    VK::Swapchain m_swapchain;
+    VK::MemoryAllocator m_memoryAllocator;
+    VK::CommandPool m_transientCommandPool;
+    VK::CommandPool m_resetCommandPool;
+    VK::DescriptorPool m_descriptorPool;
+
 private:
-    VK::WSI* p_wsi;
+    std::optional<uint32_t> m_graphicsQueueFamilyIndex { std::nullopt };
+    VkFormat m_swapchainImageFormat;
+    VkExtent2D m_swapchainImageExtent;
+
+private:
     GUI* p_gui;
-    VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
-    VkPipeline wireGraphicsPipeline;
-    VK::DescriptorPool descriptorPool;
-    VK::CommandPool commandPool;
+    VkRenderPass renderPass { VK_NULL_HANDLE };
+    VkDescriptorSetLayout descriptorSetLayout { VK_NULL_HANDLE };
+    VkPipelineLayout pipelineLayout { VK_NULL_HANDLE };
+    VkPipeline graphicsPipeline { VK_NULL_HANDLE };
+    VkPipeline wireGraphicsPipeline { VK_NULL_HANDLE };
 
 private:
     static const uint32_t MAX_FRAME = 2;
@@ -56,9 +71,11 @@ private:
     Model* m_model;
     VK::Image texture;
     VK::ImageView textureImageView;
-    VkSampler textureSampler;
+    VkSampler textureSampler { VK_NULL_HANDLE };
 
-private: // depth
+private: // frame buffer
+    std::vector<VK::FrameBuffer> m_frameBuffers;
+    std::vector<VK::ImageView> m_colorImages;
     VK::Image depthImage;
     VK::ImageView depthImageView;
 };

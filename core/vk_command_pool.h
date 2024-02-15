@@ -15,19 +15,15 @@ public:
     CommandPool& operator=(CommandPool&&) noexcept;
 
 public:
-    void Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = 0);
+    VkResult Init(VkDevice device, VkCommandPoolCreateFlags createFlags, uint32_t queueFamilyIndex);
     void Destroy(void);
 
-public: // method
-    CommandBuffer AllocateCommandBuffer(const VkQueue& queueToSubmit) const;
-
-public: // getter
+public:
     VkCommandPool GetHandle(void) const { return m_handle; }
+    CommandBuffer AllocateCommandBuffer(VkQueue queue) const;
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
-
-private:
     VkCommandPool m_handle { VK_NULL_HANDLE };
 };
 }

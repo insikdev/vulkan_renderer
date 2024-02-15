@@ -16,21 +16,17 @@ public:
     Image& operator=(Image&&) noexcept;
 
 public:
-    void Initialize(const VmaAllocator& allocator, const VkExtent3D& extent3D, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
+    VkResult Init(VmaAllocator allocator, const VkExtent3D& extent3D, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
     void Destroy(void);
 
-public: // method
-    void TransitionLayout(const CommandBuffer& commandBuffer, const VkImageLayout& oldLayout, const VkImageLayout& newLayout);
-    ImageView CreateView(const VkDevice& device, VkFormat format, VkImageAspectFlags aspectFlags) const;
-
-public: // getter
+public:
     VkImage GetHandle(void) const { return m_handle; }
+    void TransitionLayout(const CommandBuffer& commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout);
+    ImageView CreateView(VkDevice device, VkFormat format, VkImageAspectFlags aspectFlags) const;
 
 private:
     VmaAllocator m_allocator { VK_NULL_HANDLE };
-
-private:
-    VkImage m_handle { VK_NULL_HANDLE };
     VmaAllocation m_allocation { VK_NULL_HANDLE };
+    VkImage m_handle { VK_NULL_HANDLE };
 };
 }

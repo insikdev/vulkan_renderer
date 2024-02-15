@@ -1,6 +1,6 @@
 #include "vk_fence.h"
 
-void VK::Fence::Initialize(const VkDevice& device, VkFenceCreateFlags createFlags)
+VkResult VK::Fence::Init(VkDevice device, VkFenceCreateFlags createFlags)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -14,7 +14,7 @@ void VK::Fence::Initialize(const VkDevice& device, VkFenceCreateFlags createFlag
         .flags { createFlags }
     };
 
-    CHECK_VK(vkCreateFence(m_device, &createInfo, nullptr, &m_handle), "Failed to create fence.");
+    return vkCreateFence(m_device, &createInfo, nullptr, &m_handle);
 }
 
 void VK::Fence::Destroy(void)

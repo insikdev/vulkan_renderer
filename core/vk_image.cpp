@@ -23,7 +23,7 @@ VK::Image& VK::Image::operator=(Image&& other) noexcept
     return *this;
 }
 
-void VK::Image::Initialize(const VmaAllocator& allocator, const VkExtent3D& extent3D, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
+VkResult VK::Image::Init(VmaAllocator allocator, const VkExtent3D& extent3D, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -31,9 +31,9 @@ void VK::Image::Initialize(const VmaAllocator& allocator, const VkExtent3D& exte
         m_allocator = allocator;
     }
 
-    VkImageCreateInfo imageInfo {
+    VkImageCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags {},
         .imageType { VK_IMAGE_TYPE_2D },
         .format { format },
@@ -49,7 +49,7 @@ void VK::Image::Initialize(const VmaAllocator& allocator, const VkExtent3D& exte
         .initialLayout { VK_IMAGE_LAYOUT_UNDEFINED },
     };
 
-    VmaAllocationCreateInfo allocationCreateInfo = {
+    VmaAllocationCreateInfo allocationInfo {
         .flags {},
         .usage { VMA_MEMORY_USAGE_AUTO },
         .requiredFlags {},
@@ -60,7 +60,7 @@ void VK::Image::Initialize(const VmaAllocator& allocator, const VkExtent3D& exte
         .priority {}
     };
 
-    CHECK_VK(vmaCreateImage(m_allocator, &imageInfo, &allocationCreateInfo, &m_handle, &m_allocation, nullptr), "Failed to create image.");
+    return vmaCreateImage(m_allocator, &createInfo, &allocationInfo, &m_handle, &m_allocation, nullptr);
 }
 
 void VK::Image::Destroy(void)
@@ -71,7 +71,7 @@ void VK::Image::Destroy(void)
     }
 }
 
-void VK::Image::TransitionLayout(const CommandBuffer& commandBuffer, const VkImageLayout& oldLayout, const VkImageLayout& newLayout)
+void VK::Image::TransitionLayout(const CommandBuffer& commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -121,10 +121,10 @@ void VK::Image::TransitionLayout(const CommandBuffer& commandBuffer, const VkIma
     commandBuffer.Submit();
 }
 
-VK::ImageView VK::Image::CreateView(const VkDevice& device, VkFormat format, VkImageAspectFlags aspectFlags) const
+VK::ImageView VK::Image::CreateView(VkDevice device, VkFormat format, VkImageAspectFlags aspectFlags) const
 {
     ImageView view;
-    view.Initialize(device, m_handle, format, aspectFlags);
+    view.Init(device, m_handle, format, aspectFlags);
 
     return view;
 }

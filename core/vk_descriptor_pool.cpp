@@ -20,7 +20,7 @@ VK::DescriptorPool& VK::DescriptorPool::operator=(DescriptorPool&& other) noexce
     return *this;
 }
 
-void VK::DescriptorPool::Initialize(const VkDevice& device, VkDescriptorPoolCreateFlags createFlags, uint32_t maxSets, const std::vector<VkDescriptorPoolSize>& poolSizes)
+VkResult VK::DescriptorPool::Init(VkDevice device, VkDescriptorPoolCreateFlags createFlags, uint32_t maxSets, const std::vector<VkDescriptorPoolSize>& poolSizes)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -30,14 +30,14 @@ void VK::DescriptorPool::Initialize(const VkDevice& device, VkDescriptorPoolCrea
 
     VkDescriptorPoolCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags { createFlags },
         .maxSets { maxSets },
         .poolSizeCount { static_cast<uint32_t>(poolSizes.size()) },
         .pPoolSizes { poolSizes.data() }
     };
 
-    CHECK_VK(vkCreateDescriptorPool(m_device, &createInfo, nullptr, &m_handle), "Failed to create descriptor pool.");
+    return vkCreateDescriptorPool(m_device, &createInfo, nullptr, &m_handle);
 }
 
 void VK::DescriptorPool::Destroy(void)
@@ -51,7 +51,7 @@ void VK::DescriptorPool::Destroy(void)
 VK::DescriptorSet VK::DescriptorPool::AllocateDescriptorSet(const VkDescriptorSetLayout* pSetLayouts) const
 {
     VK::DescriptorSet descriptorSet;
-    descriptorSet.Initialize(m_device, m_handle, pSetLayouts);
+    descriptorSet.Init(m_device, m_handle, pSetLayouts);
 
     return descriptorSet;
 }

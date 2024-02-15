@@ -20,7 +20,7 @@ VK::CommandPool& VK::CommandPool::operator=(CommandPool&& other) noexcept
     return *this;
 }
 
-void VK::CommandPool::Initialize(const VkDevice& device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
+VkResult VK::CommandPool::Init(VkDevice device, VkCommandPoolCreateFlags createFlags, uint32_t queueFamilyIndex)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -30,12 +30,12 @@ void VK::CommandPool::Initialize(const VkDevice& device, uint32_t queueFamilyInd
 
     VkCommandPoolCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags { createFlags },
         .queueFamilyIndex { queueFamilyIndex }
     };
 
-    CHECK_VK(vkCreateCommandPool(m_device, &createInfo, nullptr, &m_handle), "Failed to create command pool.");
+    return vkCreateCommandPool(m_device, &createInfo, nullptr, &m_handle);
 }
 
 void VK::CommandPool::Destroy(void)
@@ -46,10 +46,10 @@ void VK::CommandPool::Destroy(void)
     }
 }
 
-VK::CommandBuffer VK::CommandPool::AllocateCommandBuffer(const VkQueue& queueToSubmit) const
+VK::CommandBuffer VK::CommandPool::AllocateCommandBuffer(VkQueue queue) const
 {
     VK::CommandBuffer commandBuffer;
-    commandBuffer.Initialize(m_device, m_handle, queueToSubmit);
+    commandBuffer.Init(m_device, m_handle, queue);
 
     return commandBuffer;
 }

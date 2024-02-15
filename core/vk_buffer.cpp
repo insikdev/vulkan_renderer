@@ -22,7 +22,7 @@ VK::Buffer& VK::Buffer::operator=(Buffer&& other) noexcept
     return *this;
 }
 
-void VK::Buffer::Initialize(const VmaAllocator& allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
+VkResult VK::Buffer::Init(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -30,18 +30,18 @@ void VK::Buffer::Initialize(const VmaAllocator& allocator, VkDeviceSize size, Vk
         m_allocator = allocator;
     }
 
-    VkBufferCreateInfo bufferCreateInfo {
+    VkBufferCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
         .size { size },
         .usage { usage },
-        .sharingMode {},
+        .sharingMode { VK_SHARING_MODE_EXCLUSIVE },
         .queueFamilyIndexCount {},
         .pQueueFamilyIndices {}
     };
 
-    VmaAllocationCreateInfo allocationCreateInfo = {
+    VmaAllocationCreateInfo allocationInfo {
         .flags { allocationFlags },
         .usage { VMA_MEMORY_USAGE_AUTO },
         .requiredFlags {},
@@ -52,7 +52,7 @@ void VK::Buffer::Initialize(const VmaAllocator& allocator, VkDeviceSize size, Vk
         .priority {}
     };
 
-    CHECK_VK(vmaCreateBuffer(m_allocator, &bufferCreateInfo, &allocationCreateInfo, &m_handle, &m_allocation, nullptr), "Failed to create buffer.");
+    return vmaCreateBuffer(m_allocator, &createInfo, &allocationInfo, &m_handle, &m_allocation, nullptr);
 }
 
 void VK::Buffer::Destroy(void)
@@ -73,7 +73,7 @@ void VK::Buffer::CopyData(void* pSrc, VkDeviceSize size)
     vmaUnmapMemory(m_allocator, m_allocation);
 }
 
-void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, const VkBuffer& dstBuffer, VkDeviceSize size)
+void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -89,7 +89,7 @@ void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, const VkBuffer
     commandBuffer.Submit();
 }
 
-void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, const VkImage& image, const VkExtent3D& extent3D)
+void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, VkImage image, const VkExtent3D& extent3D)
 {
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 

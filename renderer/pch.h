@@ -8,6 +8,7 @@
 #include <array>
 #include <iostream>
 #include <cassert>
+#include <optional>
 
 // library
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -45,6 +46,5 @@ struct FrameData {
     VK::Semaphore imageAvailableSemaphore;
     VK::Semaphore renderFinishedSemaphore;
     VK::Fence inFlightFence;
-
     VK::Buffer globalUBO;
 };

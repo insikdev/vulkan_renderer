@@ -3,17 +3,17 @@
 #include "vk_buffer.h"
 #include "vk_image.h"
 
-void VK::MemoryAllocator::Initialize(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkDevice& device)
+VkResult VK::MemoryAllocator::Init(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
-    VmaAllocatorCreateInfo allocatorCreateInfo {
+    VmaAllocatorCreateInfo createInfo {
         .physicalDevice { physicalDevice },
         .device { device },
         .instance { instance }
     };
 
-    CHECK_VK(vmaCreateAllocator(&allocatorCreateInfo, &m_handle), "Failed to create memory allocator.");
+    return vmaCreateAllocator(&createInfo, &m_handle);
 }
 
 void VK::MemoryAllocator::Destroy(void)
@@ -29,7 +29,7 @@ VK::Buffer VK::MemoryAllocator::CreateBuffer(VkDeviceSize size, VkBufferUsageFla
     assert(m_handle != VK_NULL_HANDLE);
 
     VK::Buffer buffer;
-    buffer.Initialize(m_handle, size, usage, allocationFlags);
+    buffer.Init(m_handle, size, usage, allocationFlags);
 
     return buffer;
 }
@@ -39,7 +39,7 @@ VK::Image VK::MemoryAllocator::CreateImage(const VkExtent3D& extent3D, VkFormat 
     assert(m_handle != VK_NULL_HANDLE);
 
     VK::Image image;
-    image.Initialize(m_handle, extent3D, format, tiling, usage);
+    image.Init(m_handle, extent3D, format, tiling, usage);
 
     return image;
 }

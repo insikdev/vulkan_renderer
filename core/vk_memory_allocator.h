@@ -16,15 +16,13 @@ public:
     MemoryAllocator& operator=(MemoryAllocator&&) = delete;
 
 public:
-    void Initialize(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkDevice& device);
+    VkResult Init(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device);
     void Destroy(void);
 
-public: // method
+public:
+    VmaAllocator GetHandle(void) const { return m_handle; }
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0) const;
     Image CreateImage(const VkExtent3D& extent3D, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage) const;
-
-public: // getter
-    VmaAllocator GetHandle(void) const { return m_handle; }
 
 private:
     VmaAllocator m_handle { VK_NULL_HANDLE };

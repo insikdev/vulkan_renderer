@@ -13,16 +13,14 @@ public:
     ImageView& operator=(ImageView&&) noexcept;
 
 public:
-    void Initialize(const VkDevice& device, const VkImage& image, VkFormat format, VkImageAspectFlags aspectFlags);
+    VkResult Init(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     void Destroy(void);
 
-public: // getter
+public:
     VkImageView GetHandle(void) const { return m_handle; }
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
-
-private:
     VkImageView m_handle { VK_NULL_HANDLE };
 };
 }
