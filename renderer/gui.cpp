@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "gui.h"
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
 
-GUI::GUI(GLFWwindow* pWindow, VkRenderPass& renderPass)
+void GUI::Init(GLFWwindow* pWindow, ImGui_ImplVulkan_InitInfo* info, VkRenderPass& renderPass, GuiOptions* pOptions)
 {
+    {
+        p_options = pOptions;
+    }
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -16,39 +17,17 @@ GUI::GUI(GLFWwindow* pWindow, VkRenderPass& renderPass)
     ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForVulkan(pWindow, true);
-
-    std::vector<VkDescriptorPoolSize> pool_sizes = {
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
-    };
-
-    // m_descriptorPool = p_wsi->GetDevice()->CreateDescriptorPool(1, pool_sizes, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
-
-    /* ImGui_ImplVulkan_InitInfo info {
-         .Instance { p_wsi->GetInstance()->GetHandle() },
-         .PhysicalDevice { p_wsi->GetDevice()->GetPhysicalDeviceHandle() },
-         .Device { p_wsi->GetDevice()->GetHandle() },
-         .QueueFamily { p_wsi->GetDevice()->GetGraphicQueueFamilyIndex() },
-         .Queue { p_wsi->GetDevice()->GetGrahpicsQueue() },
-         .PipelineCache {},
-         .DescriptorPool { m_descriptorPool.GetHandle() },
-         .Subpass {},
-         .MinImageCount { 2 },
-         .ImageCount { 3 },
-         .MinAllocationSize { 1024 * 1024 }
-     };
-
-     ImGui_ImplVulkan_Init(&info, renderPass);*/
+    ImGui_ImplVulkan_Init(info, renderPass);
 }
 
-GUI::~GUI()
+void GUI::Destroy(void)
 {
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    m_descriptorPool.Destroy();
 }
 
-void GUI::Render(const VkCommandBuffer& commandBuffer)
+void GUI::Render(VkCommandBuffer commandBuffer)
 {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -59,6 +38,7 @@ void GUI::Render(const VkCommandBuffer& commandBuffer)
         ImGui::SetWindowPos(ImVec2(10, 10));
 
         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::Checkbox("wireframe", &p_options->wireframe);
         ImGui::End();
 
         ImGui::Render();

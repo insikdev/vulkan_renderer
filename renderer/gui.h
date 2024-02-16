@@ -2,12 +2,18 @@
 
 class GUI {
 public:
-    GUI(GLFWwindow* pWindow, VkRenderPass& renderPass);
-    ~GUI();
+    GUI() = default;
+    ~GUI() { Destroy(); }
+    GUI(const GUI&) = delete;
+    GUI(GUI&&) = delete;
+    GUI& operator=(const GUI&) = delete;
+    GUI& operator=(GUI&&) = delete;
 
 public:
-    void Render(const VkCommandBuffer& commandBuffer);
+    void Init(GLFWwindow* pWindow, ImGui_ImplVulkan_InitInfo* info, VkRenderPass& renderPass, GuiOptions* pOptions);
+    void Destroy(void);
+    void Render(VkCommandBuffer commandBuffer);
 
 private:
-    VK::DescriptorPool m_descriptorPool;
+    GuiOptions* p_options;
 };

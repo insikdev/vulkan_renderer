@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cassert>
 #include <optional>
+#include <filesystem>
 
 // library
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -22,6 +23,10 @@
 #define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 
 // core
 #include <vk_core.h>
@@ -47,4 +52,8 @@ struct FrameData {
     VK::Semaphore renderFinishedSemaphore;
     VK::Fence inFlightFence;
     VK::Buffer globalUBO;
+};
+
+struct GuiOptions {
+    bool wireframe;
 };

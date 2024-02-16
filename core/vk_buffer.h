@@ -15,7 +15,7 @@ public:
     Buffer& operator=(Buffer&&) noexcept;
 
 public:
-    VkResult Init(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags = 0);
+    VkResult Init(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usageFlags, VmaAllocationCreateFlags allocationFlags = 0);
     void Destroy(void);
 
 public:

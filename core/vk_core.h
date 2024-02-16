@@ -4,6 +4,7 @@
 #include "vk_physical_device.h"
 #include "vk_surface.h"
 #include "vk_device.h"
+#include "vk_queue.h"
 #include "vk_swapchain.h"
 #include "vk_frame_buffer.h"
 

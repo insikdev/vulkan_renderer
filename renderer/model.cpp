@@ -1,30 +1,17 @@
 #include "pch.h"
 #define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
+// #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "model.h"
-#include "mesh.h"
 
-Model::~Model()
-{
-    for (auto& m : m_meshes) {
-        delete m;
-    }
-}
-
-void Model::Render(const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout)
-{
-    for (auto& m : m_meshes) {
-        m->Draw(commandBuffer, pipelineLayout);
-    }
-}
-
-void Model::ReadFromFile(const std::string& filename, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool)
+void Model::Init(const std::string& filename, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool)
 {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
     std::string warn;
+
+    m_filepath = std::filesystem::path { filename };
 
     bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename.c_str());
 
@@ -50,9 +37,13 @@ void Model::ReadFromFile(const std::string& filename, const VK::Device* pDevice,
         tinygltf::Node& currentNode = model.nodes[currentNodeIndex];
 
         ProcessNode(model, currentNode, pDevice, pAllocator, pCommandPool);
-        /*for (size_t j = 0; j < currentNode.children.size(); j++) {
-            int childNodeIndex = currentNode.children[j];
-        }*/
+    }
+}
+
+void Model::Render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout)
+{
+    for (auto& mesh : m_meshes) {
+        mesh.Draw(commandBuffer, pipelineLayout);
     }
 }
 
@@ -79,24 +70,31 @@ void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, con
         tinygltf::Primitive& currentPrimitive = currentMesh.primitives[i];
 
         int posIndex = currentPrimitive.attributes.find("POSITION")->second;
+        int uvIndex = currentPrimitive.attributes.find("TEXCOORD_0")->second;
         int indicesIndex = currentPrimitive.indices;
 
         tinygltf::Accessor& posAccessor = model.accessors[posIndex];
+        tinygltf::Accessor& uvAccessor = model.accessors[uvIndex];
         tinygltf::Accessor& indexAccessor = model.accessors[indicesIndex];
 
         tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
         tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
 
+        tinygltf::BufferView& uvBufferView = model.bufferViews[uvAccessor.bufferView];
+        tinygltf::Buffer& uvBuffer = model.buffers[uvBufferView.buffer];
+
         const float* pPos = reinterpret_cast<const float*>(posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset);
         size_t numPos = posAccessor.count;
+        size_t posStride = posAccessor.ByteStride(posBufferView) / sizeof(float);
 
-        size_t stride = posAccessor.ByteStride(posBufferView) / sizeof(float);
+        const float* pUv = reinterpret_cast<const float*>(uvBuffer.data.data() + uvAccessor.byteOffset + uvBufferView.byteOffset);
+        size_t uvStride = uvAccessor.ByteStride(uvBufferView) / sizeof(float);
 
         for (size_t i = 0; i < numPos; ++i) {
             Vertex vertex {
-                .pos { pPos[i * stride], pPos[i * stride + 1], pPos[i * stride + 2] },
+                .pos { pPos[i * posStride], pPos[i * posStride + 1], pPos[i * posStride + 2] },
                 .color {},
-                .uv {}
+                .uv { pUv[i * uvStride], pUv[i * uvStride + 1] }
             };
             vertices.push_back(vertex);
         }
@@ -121,7 +119,20 @@ void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, con
             }
         }
 
-        Mesh* myMesh = new Mesh { pDevice, pAllocator, pCommandPool, vertices, indices };
-        m_meshes.push_back(myMesh);
+        Mesh& myMesh = m_meshes.emplace_back();
+        myMesh.Init(pAllocator, pCommandPool, pDevice->GetQueue(0), vertices, indices);
+
+        int materialIndex = currentPrimitive.material;
+        if (materialIndex > -1) {
+            tinygltf::Material& currentMaterial = model.materials[materialIndex];
+            int baseColorTextureIndex = currentMaterial.pbrMetallicRoughness.baseColorTexture.index;
+
+            std::string filename = model.images[baseColorTextureIndex].uri;
+
+            std::filesystem::path finalPath = m_filepath.parent_path() / std::filesystem::path { filename };
+
+            myMesh.texture = pAllocator->CreateTexture2D(finalPath.string(), *pCommandPool, pDevice->GetQueue(0));
+            myMesh.textureView = myMesh.texture.CreateView(pDevice->GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        }
     }
 }

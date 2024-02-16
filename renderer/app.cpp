@@ -2,8 +2,6 @@
 #include "app.h"
 #include "utils.h"
 #include "model.h"
-#include "mesh.h"
-#include <stb_image.h>
 #include "gui.h"
 
 #define CURRENT_FRAME m_frameData[m_currentFrame]
@@ -12,25 +10,22 @@ void App::Init(uint32_t width, uint32_t height)
 {
     InitGLFW(width, height);
     InitVulkan();
-
-    CreateMesh();
-    CreateTexture();
     CreateSampler();
-
     InitPipeline();
     InitFrameBuffer();
-
-    CreateUniformBuffer();
-    CreateDescriptorSets();
+    InitGui();
+    InitModel();
 }
 
 void App::Destroy(void)
 {
+#pragma region GUI
     delete p_gui;
+    m_guiDescriptorPool.Destroy();
+#pragma endregion
+
     delete m_model;
     vkDestroySampler(m_device.GetHandle(), textureSampler, nullptr);
-    textureImageView.Destroy();
-    texture.Destroy();
 
 #pragma region frame data
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
@@ -196,11 +191,16 @@ void App::InitVulkan(void)
 #pragma endregion
 
 #pragma region frame data
+    VkDeviceSize bufferSize = sizeof(GlobalUniformData);
+    VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
         m_frameData[i].commandBuffer = m_resetCommandPool.AllocateCommandBuffer(m_graphicsQueue);
         m_frameData[i].imageAvailableSemaphore.Init(m_device.GetHandle());
         m_frameData[i].renderFinishedSemaphore.Init(m_device.GetHandle());
         m_frameData[i].inFlightFence.Init(m_device.GetHandle(), VK_FENCE_CREATE_SIGNALED_BIT);
+        m_frameData[i].globalUBO = m_memoryAllocator.CreateBuffer(bufferSize, bufferUsage, allocationFlags);
     }
 #pragma endregion
 
@@ -459,7 +459,7 @@ void App::InitPipeline(void)
         .depthClampEnable { VK_FALSE },
         .rasterizerDiscardEnable { VK_FALSE },
         .polygonMode { VK_POLYGON_MODE_FILL },
-        .cullMode { VK_CULL_MODE_BACK_BIT },
+        .cullMode { VK_CULL_MODE_NONE },
         .frontFace { VK_FRONT_FACE_CLOCKWISE },
         .depthBiasEnable { VK_FALSE },
         .depthBiasConstantFactor {},
@@ -592,6 +592,50 @@ void App::InitFrameBuffer(void)
 #pragma endregion
 }
 
+void App::InitGui(void)
+{
+    std::vector<VkDescriptorPoolSize> pool_sizes = {
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+    };
+
+    m_guiDescriptorPool.Init(m_device.GetHandle(), VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, 1, pool_sizes);
+
+    ImGui_ImplVulkan_InitInfo info {
+        .Instance { m_instance.GetHandle() },
+        .PhysicalDevice { m_physicalDevice.GetHandle() },
+        .Device { m_device.GetHandle() },
+        .QueueFamily { m_graphicsQueueFamilyIndex.value() },
+        .Queue { m_graphicsQueue },
+        .PipelineCache {},
+        .DescriptorPool { m_guiDescriptorPool.GetHandle() },
+        .Subpass {},
+        .MinImageCount { 2 },
+        .ImageCount { 3 },
+        .MinAllocationSize { 1024 * 1024 }
+    };
+
+    p_gui = new GUI {};
+    p_gui->Init(m_window, &info, renderPass, &guiOptions);
+}
+
+void App::InitModel(void)
+{
+#pragma region model
+    m_model = new Model {};
+    m_model->Init("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf", &m_device, &m_memoryAllocator, &m_transientCommandPool);
+#pragma endregion
+
+#pragma region descriptor set
+    for (auto& mesh : m_model->m_meshes) {
+        mesh.m_descriptorSet = m_descriptorPool.AllocateDescriptorSet(&descriptorSetLayout);
+
+        mesh.m_descriptorSet.WriteBuffer(0, { mesh.m_uniformBuffer.GetHandle(), 0, sizeof(MeshUniformData) });
+        mesh.m_descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
+        mesh.m_descriptorSet.WriteImage(2, { textureSampler, mesh.textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    }
+#pragma endregion
+}
+
 void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
     VkRect2D renderArea {
@@ -613,8 +657,11 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    // vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireGraphicsPipeline);
+    if (guiOptions.wireframe) {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireGraphicsPipeline);
+    } else {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    }
 
     VkViewport viewport {
         .x { 0.0f },
@@ -634,72 +681,16 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     m_model->Render(commandBuffer, pipelineLayout);
-    // p_gui->Render(commandBuffer);
+    p_gui->Render(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
-}
-
-void App::CreateMesh(void)
-{
-    m_model = new Model {};
-    m_model->ReadFromFile("C:/assets/glTF-Sample-Models/2.0/Box/glTF/Box.gltf", &m_device, &m_memoryAllocator, &m_transientCommandPool);
-}
-
-void App::CreateUniformBuffer(void)
-{
-    VkDeviceSize bufferSize = sizeof(GlobalUniformData);
-    VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-
-    for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        m_frameData[i].globalUBO = m_memoryAllocator.CreateBuffer(bufferSize, bufferUsage, allocationFlags);
-    }
-}
-
-void App::CreateDescriptorSets(void)
-{
-    for (auto& m : m_model->m_meshes) {
-        m->m_descriptorSet = m_descriptorPool.AllocateDescriptorSet(&descriptorSetLayout);
-
-        m->m_descriptorSet.WriteBuffer(0, { m->GetUniformBuffer(), 0, sizeof(MeshUniformData) });
-        m->m_descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
-        m->m_descriptorSet.WriteImage(2, { textureSampler, textureImageView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
-    }
-}
-
-void App::CreateTexture(void)
-{
-    int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("C:/assets/images/crate2_diffuse.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-    if (!pixels) {
-        throw std::runtime_error("failed to load texture image!");
-    }
-
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
-    VkBufferUsageFlags stagingBufferUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    VmaAllocationCreateFlags stagingBufferAllocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    VK::Buffer stagingBuffer = m_memoryAllocator.CreateBuffer(imageSize, stagingBufferUsage, stagingBufferAllocationFlags);
-    stagingBuffer.CopyData(pixels, imageSize);
-
-    stbi_image_free(pixels);
-
-    VkExtent3D extent3D = { static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1 };
-
-    texture = m_memoryAllocator.CreateImage(extent3D, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-
-    texture.TransitionLayout(m_transientCommandPool.AllocateCommandBuffer(m_graphicsQueue), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    stagingBuffer.CopyToImage(m_transientCommandPool.AllocateCommandBuffer(m_graphicsQueue), texture.GetHandle(), extent3D);
-    texture.TransitionLayout(m_transientCommandPool.AllocateCommandBuffer(m_graphicsQueue), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    textureImageView = texture.CreateView(m_device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void App::CreateSampler()
 {
     VkPhysicalDeviceProperties properties = m_physicalDevice.GetProperties();
 
-    VkSamplerCreateInfo samplerInfo {
+    VkSamplerCreateInfo createInfo {
         .sType { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
@@ -720,7 +711,7 @@ void App::CreateSampler()
         .unnormalizedCoordinates { VK_FALSE }
     };
 
-    CHECK_VK(vkCreateSampler(m_device.GetHandle(), &samplerInfo, nullptr, &textureSampler), "Failed to create texture sampler.");
+    CHECK_VK(vkCreateSampler(m_device.GetHandle(), &createInfo, nullptr, &textureSampler), "Failed to create texture sampler.");
 }
 
 void App::Update(void)

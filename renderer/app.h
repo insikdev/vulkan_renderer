@@ -22,15 +22,12 @@ private:
     void InitVulkan(void);
     void InitPipeline(void);
     void InitFrameBuffer(void);
-
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-    void CreateMesh(void);
-    void CreateUniformBuffer(void);
-    void CreateDescriptorSets(void);
-    void CreateTexture(void);
+    void InitGui(void);
+    void InitModel(void);
 
     void CreateSampler();
 
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void Update(void);
     void Render(void);
 
@@ -50,6 +47,12 @@ private: // vulkan object
     VK::CommandPool m_transientCommandPool;
     VK::CommandPool m_resetCommandPool;
     VK::DescriptorPool m_descriptorPool;
+    VK::DescriptorPool m_guiDescriptorPool;
+    VkRenderPass renderPass { VK_NULL_HANDLE };
+    VkDescriptorSetLayout descriptorSetLayout { VK_NULL_HANDLE };
+    VkPipelineLayout pipelineLayout { VK_NULL_HANDLE };
+    VkPipeline graphicsPipeline { VK_NULL_HANDLE };
+    VkPipeline wireGraphicsPipeline { VK_NULL_HANDLE };
 
 private:
     std::optional<uint32_t> m_graphicsQueueFamilyIndex { std::nullopt };
@@ -58,19 +61,13 @@ private:
 
 private:
     GUI* p_gui;
-    VkRenderPass renderPass { VK_NULL_HANDLE };
-    VkDescriptorSetLayout descriptorSetLayout { VK_NULL_HANDLE };
-    VkPipelineLayout pipelineLayout { VK_NULL_HANDLE };
-    VkPipeline graphicsPipeline { VK_NULL_HANDLE };
-    VkPipeline wireGraphicsPipeline { VK_NULL_HANDLE };
+    GuiOptions guiOptions {};
 
 private:
     static const uint32_t MAX_FRAME = 2;
     FrameData m_frameData[MAX_FRAME];
     uint32_t m_currentFrame {};
     Model* m_model;
-    VK::Image texture;
-    VK::ImageView textureImageView;
     VkSampler textureSampler { VK_NULL_HANDLE };
 
 private: // frame buffer

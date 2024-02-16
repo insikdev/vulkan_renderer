@@ -28,12 +28,12 @@ void VK::Device::Destroy(void)
     }
 }
 
-VkQueue VK::Device::GetQueue(uint32_t queueFamilyIndex) const
+VkQueue VK::Device::GetQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
     VkQueue queue;
-    vkGetDeviceQueue(m_handle, queueFamilyIndex, 0, &queue);
+    vkGetDeviceQueue(m_handle, queueFamilyIndex, queueIndex, &queue);
 
     return queue;
 }

@@ -22,7 +22,7 @@ VK::Buffer& VK::Buffer::operator=(Buffer&& other) noexcept
     return *this;
 }
 
-VkResult VK::Buffer::Init(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags)
+VkResult VK::Buffer::Init(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usageFlags, VmaAllocationCreateFlags allocationFlags)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
@@ -35,7 +35,7 @@ VkResult VK::Buffer::Init(VmaAllocator allocator, VkDeviceSize size, VkBufferUsa
         .pNext { nullptr },
         .flags {},
         .size { size },
-        .usage { usage },
+        .usage { usageFlags },
         .sharingMode { VK_SHARING_MODE_EXCLUSIVE },
         .queueFamilyIndexCount {},
         .pQueueFamilyIndices {}

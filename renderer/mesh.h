@@ -2,30 +2,23 @@
 
 class Mesh {
 public:
-    Mesh(const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
-    ~Mesh();
+    void Init(
+        const VK::MemoryAllocator* pAllocator,
+        const VK::CommandPool* pCommandPool,
+        VkQueue queue,
+        const std::vector<Vertex>& vertices,
+        const std::vector<uint32_t>& indices);
 
 public:
-    void Draw(const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout);
-
-public: // getter
-    VkBuffer GetUniformBuffer(void) const { return m_uniformBuffer.GetHandle(); }
-
-private:
-    void CreateVertexBuffer(const std::vector<Vertex>& vertices);
-    void CreateIndexBuffer(const std::vector<uint32_t>& indices);
-    void CreateUniformBuffer(void);
-
-private:
-    const VK::Device* p_device { nullptr };
-    const VK::MemoryAllocator* p_allocator { nullptr };
-    const VK::CommandPool* p_commandPool { nullptr };
+    void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
 public:
     VK::Buffer m_vertexBuffer;
     VK::Buffer m_indexBuffer;
     VK::Buffer m_uniformBuffer;
     VK::DescriptorSet m_descriptorSet;
-    MeshUniformData m_uniformData;
-    uint32_t m_indexCount;
+    MeshUniformData m_uniformData {};
+    uint32_t m_indexCount {};
+    VK::Image texture;
+    VK::ImageView textureView;
 };
