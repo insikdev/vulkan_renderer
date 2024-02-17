@@ -3,9 +3,9 @@
 class Mesh {
 public:
     void Init(
-        const VK::MemoryAllocator* pAllocator,
-        const VK::CommandPool* pCommandPool,
-        VkQueue queue,
+        const VK::MemoryAllocator& memoryAllocator,
+        const VK::CommandPool& commandPool,
+        const VK::Queue& queue,
         const std::vector<Vertex>& vertices,
         const std::vector<uint32_t>& indices);
 

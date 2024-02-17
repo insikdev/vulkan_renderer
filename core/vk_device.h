@@ -3,6 +3,8 @@
 #include "common.h"
 
 namespace VK {
+class Queue;
+
 class Device {
 public:
     Device() = default;
@@ -18,7 +20,7 @@ public:
 
 public:
     VkDevice GetHandle(void) const { return m_handle; }
-    VkQueue GetQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0) const;
+    Queue GetQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0) const;
     VkResult WaitIdle(void) const;
 
 private:

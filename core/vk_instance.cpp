@@ -1,4 +1,5 @@
 #include "vk_instance.h"
+#include "vk_physical_device.h"
 
 VkResult VK::Instance::Init(const VkApplicationInfo* pApplicationInfo, const std::vector<const char*>& enabledLayerCount, const std::vector<const char*>& enabledExtensions)
 {
@@ -26,17 +27,23 @@ void VK::Instance::Destroy(void)
     }
 }
 
-std::vector<VkPhysicalDevice> VK::Instance::GetPhysicalDevices(void) const
+std::vector<VK::PhysicalDevice> VK::Instance::GetPhysicalDevices(void) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
     uint32_t count {};
     vkEnumeratePhysicalDevices(m_handle, &count, nullptr);
 
-    std::vector<VkPhysicalDevice> physicalDevices(count);
+    std::vector<VkPhysicalDevice> vulkanPhysicalDevices(count);
 
     if (count != 0) {
-        vkEnumeratePhysicalDevices(m_handle, &count, physicalDevices.data());
+        vkEnumeratePhysicalDevices(m_handle, &count, vulkanPhysicalDevices.data());
+    }
+
+    std::vector<VK::PhysicalDevice> physicalDevices;
+
+    for (VkPhysicalDevice vulkanPhysicalDevice : vulkanPhysicalDevices) {
+        physicalDevices.emplace_back().Init(vulkanPhysicalDevice);
     }
 
     return physicalDevices;

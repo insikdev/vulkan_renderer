@@ -1,5 +1,6 @@
 #include "vk_image.h"
 #include "vk_command_buffer.h"
+#include "vk_queue.h"
 #include "vk_image_view.h"
 
 VK::Image::Image(Image&& other) noexcept
@@ -71,7 +72,7 @@ void VK::Image::Destroy(void)
     }
 }
 
-void VK::Image::TransitionLayout(const CommandBuffer& commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout)
+void VK::Image::TransitionLayout(const CommandBuffer& commandBuffer, const Queue& queue, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -118,7 +119,8 @@ void VK::Image::TransitionLayout(const CommandBuffer& commandBuffer, VkImageLayo
     vkCmdPipelineBarrier(commandBuffer.GetHandle(), sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
     commandBuffer.EndRecording();
-    commandBuffer.Submit();
+    queue.Submit({ commandBuffer.GetHandle() });
+    queue.WaitIdle();
 }
 
 VK::ImageView VK::Image::CreateView(VkDevice device, VkFormat format, VkImageAspectFlags aspectFlags) const

@@ -1,21 +1,23 @@
 #include "pch.h"
 #include "mesh.h"
 
-void Mesh::Init(const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool, VkQueue queue, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+void Mesh::Init(const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
 {
-    m_vertexBuffer = pAllocator->CreateBufferUsingStaging(
-        pCommandPool->AllocateCommandBuffer(queue),
+    m_vertexBuffer = memoryAllocator.CreateBufferUsingStaging(
+        commandPool.AllocateCommandBuffer(),
+        queue,
         sizeof(Vertex) * vertices.size(),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         (void*)vertices.data());
 
-    m_indexBuffer = pAllocator->CreateBufferUsingStaging(
-        pCommandPool->AllocateCommandBuffer(queue),
+    m_indexBuffer = memoryAllocator.CreateBufferUsingStaging(
+        commandPool.AllocateCommandBuffer(),
+        queue,
         sizeof(uint32_t) * indices.size(),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         (void*)indices.data());
 
-    m_uniformBuffer = pAllocator->CreateBuffer(
+    m_uniformBuffer = memoryAllocator.CreateBuffer(
         sizeof(MeshUniformData),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);

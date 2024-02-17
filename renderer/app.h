@@ -41,7 +41,7 @@ private: // vulkan object
     VK::Surface m_surface;
     VK::PhysicalDevice m_physicalDevice;
     VK::Device m_device;
-    VkQueue m_graphicsQueue;
+    VK::Queue m_graphicsQueue;
     VK::Swapchain m_swapchain;
     VK::MemoryAllocator m_memoryAllocator;
     VK::CommandPool m_transientCommandPool;
@@ -55,7 +55,7 @@ private: // vulkan object
     VkPipeline wireGraphicsPipeline { VK_NULL_HANDLE };
 
 private:
-    std::optional<uint32_t> m_graphicsQueueFamilyIndex { std::nullopt };
+    // std::optional<uint32_t> m_graphicsQueueFamilyIndex { std::nullopt };
     VkFormat m_swapchainImageFormat;
     VkExtent2D m_swapchainImageExtent;
 

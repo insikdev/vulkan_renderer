@@ -5,14 +5,14 @@
 
 class Model {
 public:
-    void Init(const std::string& filename, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool);
+    void Init(const std::string& filename, const VK::Device& device, const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue);
 
 public:
     void Render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
 private:
-    void ProcessNode(tinygltf::Model& model, tinygltf::Node& currentNode, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool);
-    void ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool);
+    void ProcessNode(tinygltf::Model& model, tinygltf::Node& currentNode, const VK::Device& device, const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue);
+    void ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, const VK::Device& device, const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue);
 
 public:
     std::vector<Mesh> m_meshes;

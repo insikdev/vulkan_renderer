@@ -1,5 +1,6 @@
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
+#include "vk_queue.h"
 
 VK::Buffer::Buffer(Buffer&& other) noexcept
     : m_handle { other.m_handle }
@@ -73,7 +74,7 @@ void VK::Buffer::CopyData(void* pSrc, VkDeviceSize size)
     vmaUnmapMemory(m_allocator, m_allocation);
 }
 
-void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, const Queue& queue, VkBuffer dstBuffer, VkDeviceSize size)
 {
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -86,10 +87,11 @@ void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, VkBuffer dstBu
     vkCmdCopyBuffer(commandBuffer.GetHandle(), m_handle, dstBuffer, 1, &copyRegion);
 
     commandBuffer.EndRecording();
-    commandBuffer.Submit();
+    queue.Submit({ commandBuffer.GetHandle() });
+    queue.WaitIdle();
 }
 
-void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, VkImage image, const VkExtent3D& extent3D)
+void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, const Queue& queue, VkImage image, const VkExtent3D& extent3D)
 {
     commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -112,5 +114,6 @@ void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, VkImage image, 
     vkCmdCopyBufferToImage(commandBuffer.GetHandle(), m_handle, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
     commandBuffer.EndRecording();
-    commandBuffer.Submit();
+    queue.Submit({ commandBuffer.GetHandle() });
+    queue.WaitIdle();
 }

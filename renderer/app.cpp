@@ -126,18 +126,20 @@ void App::InitVulkan(void)
 #pragma endregion
 
 #pragma region physical device
-    m_physicalDevice.Init(m_instance.GetPhysicalDevices()[0]);
+    m_physicalDevice = m_instance.GetPhysicalDevices()[0];
 
     const auto& queueFamilies = m_physicalDevice.GetQueueFamilyProperties();
 
+    uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+
     for (size_t i = 0; i < queueFamilies.size(); i++) {
         if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT && m_physicalDevice.CheckPresentationSupport(static_cast<uint32_t>(i), m_surface.GetHandle())) {
-            m_graphicsQueueFamilyIndex = static_cast<uint32_t>(i);
+            graphicsQueueFamilyIndex = static_cast<uint32_t>(i);
             break;
         }
     }
 
-    if (!m_graphicsQueueFamilyIndex.has_value()) {
+    if (graphicsQueueFamilyIndex == UINT32_MAX) {
         std::exit(EXIT_FAILURE);
     }
 #pragma endregion
@@ -155,13 +157,14 @@ void App::InitVulkan(void)
         .sType { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO },
         .pNext { nullptr },
         .flags {},
-        .queueFamilyIndex { m_graphicsQueueFamilyIndex.value() },
+        .queueFamilyIndex { graphicsQueueFamilyIndex },
         .queueCount { 1 },
         .pQueuePriorities { &queuePriority }
     };
 
     CHECK_VK(m_device.Init(m_physicalDevice.GetHandle(), { deviceQueueCreateInfo }, deviceExtensions, &deviceFeatures), "Failed to create device.");
-    m_graphicsQueue = m_device.GetQueue(m_graphicsQueueFamilyIndex.value());
+
+    m_graphicsQueue = m_device.GetQueue(graphicsQueueFamilyIndex);
 #pragma endregion
 
 #pragma region swap chain
@@ -185,8 +188,8 @@ void App::InitVulkan(void)
 #pragma endregion
 
 #pragma region command pool
-    m_transientCommandPool.Init(m_device.GetHandle(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, m_graphicsQueueFamilyIndex.value());
-    m_resetCommandPool.Init(m_device.GetHandle(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, m_graphicsQueueFamilyIndex.value());
+    m_transientCommandPool.Init(m_device.GetHandle(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, m_graphicsQueue.GetFamilyIndex());
+    m_resetCommandPool.Init(m_device.GetHandle(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, m_graphicsQueue.GetFamilyIndex());
 
 #pragma endregion
 
@@ -196,7 +199,7 @@ void App::InitVulkan(void)
     VmaAllocationCreateFlags allocationFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
-        m_frameData[i].commandBuffer = m_resetCommandPool.AllocateCommandBuffer(m_graphicsQueue);
+        m_frameData[i].commandBuffer = m_resetCommandPool.AllocateCommandBuffer();
         m_frameData[i].imageAvailableSemaphore.Init(m_device.GetHandle());
         m_frameData[i].renderFinishedSemaphore.Init(m_device.GetHandle());
         m_frameData[i].inFlightFence.Init(m_device.GetHandle(), VK_FENCE_CREATE_SIGNALED_BIT);
@@ -604,8 +607,8 @@ void App::InitGui(void)
         .Instance { m_instance.GetHandle() },
         .PhysicalDevice { m_physicalDevice.GetHandle() },
         .Device { m_device.GetHandle() },
-        .QueueFamily { m_graphicsQueueFamilyIndex.value() },
-        .Queue { m_graphicsQueue },
+        .QueueFamily { m_graphicsQueue.GetFamilyIndex() },
+        .Queue { m_graphicsQueue.GetHandle() },
         .PipelineCache {},
         .DescriptorPool { m_guiDescriptorPool.GetHandle() },
         .Subpass {},
@@ -622,7 +625,7 @@ void App::InitModel(void)
 {
 #pragma region model
     m_model = new Model {};
-    m_model->Init("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf", &m_device, &m_memoryAllocator, &m_transientCommandPool);
+    m_model->Init("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf", m_device, m_memoryAllocator, m_transientCommandPool, m_graphicsQueue);
 #pragma endregion
 
 #pragma region descriptor set
@@ -748,23 +751,25 @@ void App::Render(void)
     std::vector<VkSemaphore> waitSemaphores = { CURRENT_FRAME.imageAvailableSemaphore.GetHandle() };
     VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     std::vector<VkSemaphore> signalSemaphores = { CURRENT_FRAME.renderFinishedSemaphore.GetHandle() };
+    std::vector<VkCommandBuffer> commandBuffers = { commandBuffer.GetHandle() };
 
-    commandBuffer.Submit(waitSemaphores, signalSemaphores, CURRENT_FRAME.inFlightFence.GetHandle());
-
-    VkSwapchainKHR swapChains[] = { m_swapchain.GetHandle() };
-
-    VkPresentInfoKHR presentInfo {
-        .sType { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR },
+    VkSubmitInfo submitInfo {
+        .sType { VK_STRUCTURE_TYPE_SUBMIT_INFO },
         .pNext { nullptr },
-        .waitSemaphoreCount { static_cast<uint32_t>(signalSemaphores.size()) },
-        .pWaitSemaphores { signalSemaphores.data() },
-        .swapchainCount { 1 },
-        .pSwapchains { swapChains },
-        .pImageIndices { &imageIndex },
-        .pResults { nullptr },
+        .waitSemaphoreCount { static_cast<uint32_t>(waitSemaphores.size()) },
+        .pWaitSemaphores { waitSemaphores.data() },
+        .pWaitDstStageMask { &waitStages },
+        .commandBufferCount { static_cast<uint32_t>(commandBuffers.size()) },
+        .pCommandBuffers { commandBuffers.data() },
+        .signalSemaphoreCount { static_cast<uint32_t>(signalSemaphores.size()) },
+        .pSignalSemaphores { signalSemaphores.data() }
     };
 
-    CHECK_VK(vkQueuePresentKHR(m_graphicsQueue, &presentInfo), "Failed to present image.");
+    m_graphicsQueue.Submit({ submitInfo }, CURRENT_FRAME.inFlightFence.GetHandle());
+    m_graphicsQueue.WaitIdle();
+
+    std::vector<VkSwapchainKHR> swapChains = { m_swapchain.GetHandle() };
+    m_graphicsQueue.Present(signalSemaphores, swapChains, &imageIndex);
 
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAME;
 }

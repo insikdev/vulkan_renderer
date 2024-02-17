@@ -4,7 +4,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "model.h"
 
-void Model::Init(const std::string& filename, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool)
+void Model::Init(const std::string& filename, const VK::Device& device, const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue)
 {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
@@ -36,7 +36,7 @@ void Model::Init(const std::string& filename, const VK::Device* pDevice, const V
         int currentNodeIndex = scene.nodes[i];
         tinygltf::Node& currentNode = model.nodes[currentNodeIndex];
 
-        ProcessNode(model, currentNode, pDevice, pAllocator, pCommandPool);
+        ProcessNode(model, currentNode, device, memoryAllocator, commandPool, queue);
     }
 }
 
@@ -47,21 +47,21 @@ void Model::Render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayou
     }
 }
 
-void Model::ProcessNode(tinygltf::Model& model, tinygltf::Node& currentNode, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool)
+void Model::ProcessNode(tinygltf::Model& model, tinygltf::Node& currentNode, const VK::Device& device, const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue)
 {
     for (size_t i = 0; i < currentNode.children.size(); i++) {
         int childNodeIndex = currentNode.children[i];
-        ProcessNode(model, model.nodes[childNodeIndex], pDevice, pAllocator, pCommandPool);
+        ProcessNode(model, model.nodes[childNodeIndex], device, memoryAllocator, commandPool, queue);
     }
 
     int meshIndex = currentNode.mesh;
 
     if (meshIndex > -1) {
-        ProcessMesh(model, model.meshes[meshIndex], pDevice, pAllocator, pCommandPool);
+        ProcessMesh(model, model.meshes[meshIndex], device, memoryAllocator, commandPool, queue);
     }
 }
 
-void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, const VK::Device* pDevice, const VK::MemoryAllocator* pAllocator, const VK::CommandPool* pCommandPool)
+void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, const VK::Device& device, const VK::MemoryAllocator& memoryAllocator, const VK::CommandPool& commandPool, const VK::Queue& queue)
 {
     for (size_t i = 0; i < currentMesh.primitives.size(); i++) {
         std::vector<Vertex> vertices;
@@ -120,7 +120,7 @@ void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, con
         }
 
         Mesh& myMesh = m_meshes.emplace_back();
-        myMesh.Init(pAllocator, pCommandPool, pDevice->GetQueue(0), vertices, indices);
+        myMesh.Init(memoryAllocator, commandPool, queue, vertices, indices);
 
         int materialIndex = currentPrimitive.material;
         if (materialIndex > -1) {
@@ -131,8 +131,8 @@ void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, con
 
             std::filesystem::path finalPath = m_filepath.parent_path() / std::filesystem::path { filename };
 
-            myMesh.texture = pAllocator->CreateTexture2D(finalPath.string(), *pCommandPool, pDevice->GetQueue(0));
-            myMesh.textureView = myMesh.texture.CreateView(pDevice->GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+            myMesh.texture = memoryAllocator.CreateTexture2D(finalPath.string(), commandPool, queue);
+            myMesh.textureView = myMesh.texture.CreateView(device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 }

@@ -4,7 +4,6 @@ VK::CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept
     : m_handle { other.m_handle }
     , m_device { other.m_device }
     , m_commandPool { other.m_commandPool }
-    , m_queue { other.m_queue }
 {
     other.m_handle = VK_NULL_HANDLE;
 }
@@ -15,7 +14,6 @@ VK::CommandBuffer& VK::CommandBuffer::operator=(CommandBuffer&& other) noexcept
         m_handle = other.m_handle;
         m_device = other.m_device;
         m_commandPool = other.m_commandPool;
-        m_queue = other.m_queue;
 
         other.m_handle = VK_NULL_HANDLE;
     }
@@ -23,14 +21,13 @@ VK::CommandBuffer& VK::CommandBuffer::operator=(CommandBuffer&& other) noexcept
     return *this;
 }
 
-VkResult VK::CommandBuffer::Init(VkDevice device, VkCommandPool commandPool, VkQueue queue)
+VkResult VK::CommandBuffer::Init(VkDevice device, VkCommandPool commandPool)
 {
     assert(m_handle == VK_NULL_HANDLE);
 
     {
         m_device = device;
         m_commandPool = commandPool;
-        m_queue = queue;
     }
 
     VkCommandBufferAllocateInfo allocateInfo {
@@ -79,31 +76,4 @@ VkResult VK::CommandBuffer::Reset(void) const
     assert(m_handle != VK_NULL_HANDLE);
 
     return vkResetCommandBuffer(m_handle, 0);
-}
-
-void VK::CommandBuffer::Submit() const
-{
-    Submit({}, {}, VK_NULL_HANDLE);
-}
-
-void VK::CommandBuffer::Submit(const std::vector<VkSemaphore>& waitSemaphores, const std::vector<VkSemaphore>& signalSemaphores, VkFence fence) const
-{
-    assert(m_handle != VK_NULL_HANDLE);
-
-    VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-    VkSubmitInfo submitInfo {
-        .sType { VK_STRUCTURE_TYPE_SUBMIT_INFO },
-        .pNext { nullptr },
-        .waitSemaphoreCount { static_cast<uint32_t>(waitSemaphores.size()) },
-        .pWaitSemaphores { waitSemaphores.data() },
-        .pWaitDstStageMask { &waitStages },
-        .commandBufferCount { 1 },
-        .pCommandBuffers { &m_handle },
-        .signalSemaphoreCount { static_cast<uint32_t>(signalSemaphores.size()) },
-        .pSignalSemaphores { signalSemaphores.data() }
-    };
-
-    CHECK_VK(vkQueueSubmit(m_queue, 1, &submitInfo, fence), "Failed to submit command buffer.");
-    CHECK_VK(vkQueueWaitIdle(m_queue), "");
 }

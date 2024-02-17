@@ -46,10 +46,10 @@ void VK::CommandPool::Destroy(void)
     }
 }
 
-VK::CommandBuffer VK::CommandPool::AllocateCommandBuffer(VkQueue queue) const
+VK::CommandBuffer VK::CommandPool::AllocateCommandBuffer(void) const
 {
     VK::CommandBuffer commandBuffer;
-    commandBuffer.Init(m_device, m_handle, queue);
+    commandBuffer.Init(m_device, m_handle);
 
     return commandBuffer;
 }

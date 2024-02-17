@@ -20,7 +20,7 @@ public:
 
 public:
     VkCommandPool GetHandle(void) const { return m_handle; }
-    CommandBuffer AllocateCommandBuffer(VkQueue queue) const;
+    CommandBuffer AllocateCommandBuffer(void) const;
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };

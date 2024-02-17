@@ -1,4 +1,5 @@
 #include "vk_device.h"
+#include "vk_queue.h"
 
 VkResult VK::Device::Init(VkPhysicalDevice physicalDevice, const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, const std::vector<const char*>& enabledExtensions, const VkPhysicalDeviceFeatures* pEnabledFeatures)
 {
@@ -28,12 +29,12 @@ void VK::Device::Destroy(void)
     }
 }
 
-VkQueue VK::Device::GetQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) const
+VK::Queue VK::Device::GetQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
-    VkQueue queue;
-    vkGetDeviceQueue(m_handle, queueFamilyIndex, queueIndex, &queue);
+    VK::Queue queue;
+    queue.Init(m_handle, queueFamilyIndex, queueIndex);
 
     return queue;
 }

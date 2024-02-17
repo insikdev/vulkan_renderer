@@ -3,6 +3,8 @@
 #include "common.h"
 
 namespace VK {
+class PhysicalDevice;
+
 class Instance {
 public:
     Instance() = default;
@@ -18,7 +20,7 @@ public:
 
 public:
     VkInstance GetHandle(void) const { return m_handle; }
-    std::vector<VkPhysicalDevice> GetPhysicalDevices(void) const;
+    std::vector<PhysicalDevice> GetPhysicalDevices(void) const;
 
 private:
     VkInstance m_handle { VK_NULL_HANDLE };
