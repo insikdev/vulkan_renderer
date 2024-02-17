@@ -637,6 +637,18 @@ void App::InitModel(void)
         mesh.m_descriptorSet.WriteImage(2, { textureSampler, mesh.textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
     }
 #pragma endregion
+
+#pragma region camera
+    glm::vec3 pos { 0.0f, 0.0f, -2.0f };
+    glm::vec3 front { 0.0f, 0.0f, 1.0f };
+    glm::vec3 up { 0.0f, 1.0f, 0.0f };
+    float fov = 60.0f;
+    float aspect = static_cast<float>(m_swapchainImageExtent.width) / m_swapchainImageExtent.height;
+    float nearZ = 0.1f;
+    float farZ = 50.0f;
+
+    m_camera.Init(pos, front, up, fov, aspect, nearZ, farZ);
+#pragma endregion
 }
 
 void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -720,13 +732,9 @@ void App::CreateSampler()
 void App::Update(void)
 {
     GlobalUniformData ubo {
-        .view { glm::mat4(1.0f) },
-        .proj { glm::mat4(1.0f) }
+        .view { m_camera.GetViewMatrix() },
+        .proj { m_camera.GetProjectionMatrix() }
     };
-
-    float aspect = static_cast<float>(m_swapchainImageExtent.width) / m_swapchainImageExtent.height;
-    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 50.0f);
 
     CURRENT_FRAME.globalUBO.CopyData(&ubo, sizeof(GlobalUniformData));
 }

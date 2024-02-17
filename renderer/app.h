@@ -62,6 +62,7 @@ private:
 private:
     GUI* p_gui;
     GuiOptions guiOptions {};
+    Graphics::Camera m_camera;
 
 private:
     static const uint32_t MAX_FRAME = 2;

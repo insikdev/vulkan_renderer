@@ -30,6 +30,7 @@
 
 // core
 #include <vk_core.h>
+#include <graphics.h>
 
 struct Vertex {
     glm::vec3 pos;
