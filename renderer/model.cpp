@@ -120,7 +120,6 @@ void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, con
         }
 
         Mesh& myMesh = m_meshes.emplace_back();
-        myMesh.Init(memoryAllocator, commandPool, queue, vertices, indices);
 
         int materialIndex = currentPrimitive.material;
         if (materialIndex > -1) {
@@ -131,7 +130,8 @@ void Model::ProcessMesh(tinygltf::Model& model, tinygltf::Mesh& currentMesh, con
 
             std::filesystem::path finalPath = m_filepath.parent_path() / std::filesystem::path { filename };
 
-            myMesh.texture = memoryAllocator.CreateTexture2D(finalPath.string(), commandPool, queue);
+            // myMesh.texture = memoryAllocator.CreateTexture2D(finalPath.string(), commandPool, queue);
+            myMesh.Init(memoryAllocator, commandPool.AllocateCommandBuffer(), queue, vertices, indices, finalPath.string());
             myMesh.textureView = myMesh.texture.CreateView(device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }

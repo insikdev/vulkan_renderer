@@ -8,6 +8,7 @@
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="gui.cpp" />
+    <ClCompile Include="image.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
@@ -16,6 +17,7 @@
     <ClInclude Include="mesh.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="gui.h" />
+    <ClInclude Include="image.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="shaders">

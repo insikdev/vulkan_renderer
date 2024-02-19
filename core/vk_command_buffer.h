@@ -6,7 +6,7 @@ namespace VK {
 class CommandBuffer {
 public:
     CommandBuffer() = default;
-    ~CommandBuffer() { Destroy(); }
+    ~CommandBuffer() = default;
     CommandBuffer(const CommandBuffer&) = delete;
     CommandBuffer(CommandBuffer&&) noexcept;
     CommandBuffer& operator=(const CommandBuffer&) = delete;
@@ -14,13 +14,14 @@ public:
 
 public:
     VkResult Init(VkDevice device, VkCommandPool commandPool);
-    void Destroy(void);
+    void Free(void);
 
 public:
     VkCommandBuffer GetHandle(void) const { return m_handle; }
-    VkResult BeginRecording(VkCommandBufferUsageFlags usageFlags = 0) const;
-    VkResult EndRecording(void) const;
-    VkResult Reset(void) const;
+    VkResult Begin(VkCommandBufferUsageFlags usageFlags = 0) const;
+    VkResult End(void) const;
+    VkResult Reset(VkCommandBufferResetFlags resetFlags = 0) const;
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const;
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };

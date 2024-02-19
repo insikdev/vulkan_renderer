@@ -41,7 +41,7 @@ VkResult VK::CommandBuffer::Init(VkDevice device, VkCommandPool commandPool)
     return vkAllocateCommandBuffers(m_device, &allocateInfo, &m_handle);
 }
 
-void VK::CommandBuffer::Destroy(void)
+void VK::CommandBuffer::Free(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
         vkFreeCommandBuffers(m_device, m_commandPool, 1, &m_handle);
@@ -49,7 +49,7 @@ void VK::CommandBuffer::Destroy(void)
     }
 }
 
-VkResult VK::CommandBuffer::BeginRecording(VkCommandBufferUsageFlags usageFlags) const
+VkResult VK::CommandBuffer::Begin(VkCommandBufferUsageFlags usageFlags) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
@@ -63,7 +63,7 @@ VkResult VK::CommandBuffer::BeginRecording(VkCommandBufferUsageFlags usageFlags)
     return vkBeginCommandBuffer(m_handle, &beginInfo);
 }
 
-VkResult VK::CommandBuffer::EndRecording(void) const
+VkResult VK::CommandBuffer::End(void) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
@@ -71,9 +71,20 @@ VkResult VK::CommandBuffer::EndRecording(void) const
 }
 
 // CommandBuffer must have been allocated from a pool that was created with the VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-VkResult VK::CommandBuffer::Reset(void) const
+VkResult VK::CommandBuffer::Reset(VkCommandBufferResetFlags resetFlags) const
 {
     assert(m_handle != VK_NULL_HANDLE);
 
-    return vkResetCommandBuffer(m_handle, 0);
+    return vkResetCommandBuffer(m_handle, resetFlags);
+}
+
+void VK::CommandBuffer::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
+{
+    VkBufferCopy copyRegion {
+        .srcOffset {},
+        .dstOffset {},
+        .size { size }
+    };
+
+    vkCmdCopyBuffer(m_handle, srcBuffer, dstBuffer, 1, &copyRegion);
 }

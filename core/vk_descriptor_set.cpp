@@ -41,10 +41,10 @@ VkResult VK::DescriptorSet::Init(VkDevice device, VkDescriptorPool descriptorPoo
     return vkAllocateDescriptorSets(m_device, &allocateInfo, &m_handle);
 }
 
-void VK::DescriptorSet::Destroy(void)
+void VK::DescriptorSet::Free(void)
 {
     if (m_handle != VK_NULL_HANDLE) {
-        // vkFreeDescriptorSets(m_device, m_descriptorPool, 1, &m_handle);
+        vkFreeDescriptorSets(m_device, m_descriptorPool, 1, &m_handle);
         m_handle = VK_NULL_HANDLE;
     }
 }

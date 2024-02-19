@@ -6,7 +6,7 @@ namespace VK {
 class DescriptorSet {
 public:
     DescriptorSet() = default;
-    ~DescriptorSet() { Destroy(); }
+    ~DescriptorSet() = default;
     DescriptorSet(const DescriptorSet&) = delete;
     DescriptorSet(DescriptorSet&&) noexcept;
     DescriptorSet& operator=(const DescriptorSet&) = delete;
@@ -14,7 +14,7 @@ public:
 
 public:
     VkResult Init(VkDevice device, VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* pSetLayouts);
-    void Destroy(void);
+    void Free(void);
 
 public:
     VkDescriptorSet GetHandle(void) const { return m_handle; }

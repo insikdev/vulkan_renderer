@@ -1,6 +1,5 @@
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
-#include "vk_queue.h"
 
 VK::Buffer::Buffer(Buffer&& other) noexcept
     : m_handle { other.m_handle }
@@ -74,28 +73,14 @@ void VK::Buffer::CopyData(void* pSrc, VkDeviceSize size)
     vmaUnmapMemory(m_allocator, m_allocation);
 }
 
-void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, const Queue& queue, VkBuffer dstBuffer, VkDeviceSize size)
+void VK::Buffer::CopyToBuffer(const CommandBuffer& commandBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
 {
-    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VkBufferCopy copyRegion {
-        .srcOffset {},
-        .dstOffset {},
-        .size { size }
-    };
-
-    vkCmdCopyBuffer(commandBuffer.GetHandle(), m_handle, dstBuffer, 1, &copyRegion);
-
-    commandBuffer.EndRecording();
-    queue.Submit({ commandBuffer.GetHandle() });
-    queue.WaitIdle();
+    commandBuffer.CopyBuffer(m_handle, dstBuffer, size);
 }
 
-void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, const Queue& queue, VkImage image, const VkExtent3D& extent3D)
+void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, VkImage dstImage, const VkExtent3D& imageExtent) const
 {
-    commandBuffer.BeginRecording(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VkImageSubresourceLayers imageSubresource {
+    VkImageSubresourceLayers subresourceLayers {
         .aspectMask { VK_IMAGE_ASPECT_COLOR_BIT },
         .mipLevel { 0 },
         .baseArrayLayer { 0 },
@@ -106,14 +91,10 @@ void VK::Buffer::CopyToImage(const CommandBuffer& commandBuffer, const Queue& qu
         .bufferOffset { 0 },
         .bufferRowLength { 0 },
         .bufferImageHeight { 0 },
-        .imageSubresource { imageSubresource },
+        .imageSubresource { subresourceLayers },
         .imageOffset { 0, 0, 0 },
-        .imageExtent { extent3D }
+        .imageExtent { imageExtent }
     };
 
-    vkCmdCopyBufferToImage(commandBuffer.GetHandle(), m_handle, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    commandBuffer.EndRecording();
-    queue.Submit({ commandBuffer.GetHandle() });
-    queue.WaitIdle();
+    vkCmdCopyBufferToImage(commandBuffer.GetHandle(), m_handle, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }

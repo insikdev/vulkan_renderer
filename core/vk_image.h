@@ -4,7 +4,6 @@
 
 namespace VK {
 class CommandBuffer;
-class Queue;
 class ImageView;
 
 class Image {
@@ -22,7 +21,7 @@ public:
 
 public:
     VkImage GetHandle(void) const { return m_handle; }
-    void TransitionLayout(const CommandBuffer& commandBuffer, const Queue& queue, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void TransitionLayout(const CommandBuffer& commandBuffer, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask) const;
     ImageView CreateView(VkDevice device, VkFormat format, VkImageAspectFlags aspectFlags) const;
 
 private:

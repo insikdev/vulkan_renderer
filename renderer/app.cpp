@@ -30,7 +30,7 @@ void App::Destroy(void)
 #pragma region frame data
     for (uint32_t i = 0; i < MAX_FRAME; i++) {
         m_frameData[i].globalUBO.Destroy();
-        m_frameData[i].commandBuffer.Destroy();
+        m_frameData[i].commandBuffer.Free();
         m_frameData[i].imageAvailableSemaphore.Destroy();
         m_frameData[i].renderFinishedSemaphore.Destroy();
         m_frameData[i].inFlightFence.Destroy();
@@ -155,7 +155,7 @@ void App::InitVulkan(void)
 
     VkDeviceQueueCreateInfo deviceQueueCreateInfo {
         .sType { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO },
-        .pNext { nullptr },
+        .pNext {},
         .flags {},
         .queueFamilyIndex { graphicsQueueFamilyIndex },
         .queueCount { 1 },
@@ -752,9 +752,9 @@ void App::Render(void)
     VK::CommandBuffer& commandBuffer = CURRENT_FRAME.commandBuffer;
 
     commandBuffer.Reset();
-    commandBuffer.BeginRecording();
+    commandBuffer.Begin();
     recordCommandBuffer(commandBuffer.GetHandle(), imageIndex);
-    commandBuffer.EndRecording();
+    commandBuffer.End();
 
     std::vector<VkSemaphore> waitSemaphores = { CURRENT_FRAME.imageAvailableSemaphore.GetHandle() };
     VkPipelineStageFlags waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };

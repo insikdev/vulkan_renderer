@@ -5,9 +5,6 @@
 namespace VK {
 class Buffer;
 class Image;
-class CommandPool;
-class CommandBuffer;
-class Queue;
 
 class MemoryAllocator {
 public:
@@ -25,9 +22,7 @@ public:
 public:
     VmaAllocator GetHandle(void) const { return m_handle; }
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, VmaAllocationCreateFlags allocationFlags = 0) const;
-    Buffer CreateBufferUsingStaging(const CommandBuffer& commandBuffer, const Queue& queue, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, void* pData) const;
     Image CreateImage(const VkExtent3D& extent3D, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usageFlags) const;
-    Image CreateTexture2D(const std::string& filepath, const CommandPool& commandPool, const Queue& queue) const;
 
 private:
     VmaAllocator m_handle { VK_NULL_HANDLE };

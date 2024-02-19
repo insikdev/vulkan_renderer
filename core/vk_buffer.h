@@ -4,7 +4,6 @@
 
 namespace VK {
 class CommandBuffer;
-class Queue;
 
 class Buffer {
 public:
@@ -22,8 +21,8 @@ public:
 public:
     VkBuffer GetHandle(void) const { return m_handle; }
     void CopyData(void* pSrc, VkDeviceSize size);
-    void CopyToBuffer(const CommandBuffer& commandBuffer, const Queue& queue, VkBuffer dstBuffer, VkDeviceSize size);
-    void CopyToImage(const CommandBuffer& commandBuffer, const Queue& queue, VkImage image, const VkExtent3D& extent3D);
+    void CopyToBuffer(const CommandBuffer& commandBuffer, VkBuffer dstBuffer, VkDeviceSize size) const;
+    void CopyToImage(const CommandBuffer& commandBuffer, VkImage dstImage, const VkExtent3D& imageExtent) const;
 
 private:
     VmaAllocator m_allocator { VK_NULL_HANDLE };
