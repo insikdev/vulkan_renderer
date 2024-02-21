@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "app.h"
 #include "utils.h"
-#include "model.h"
+#include "glTF_asset.h"
 #include "gui.h"
 
 #define CURRENT_FRAME m_frameData[m_currentFrame]
@@ -24,7 +24,7 @@ void App::Destroy(void)
     m_guiDescriptorPool.Destroy();
 #pragma endregion
 
-    delete m_model;
+    delete m_asset;
     vkDestroySampler(m_device.GetHandle(), textureSampler, nullptr);
 
 #pragma region frame data
@@ -38,7 +38,8 @@ void App::Destroy(void)
 #pragma endregion
 
 #pragma region pipeline
-    vkDestroyDescriptorSetLayout(m_device.GetHandle(), descriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(m_device.GetHandle(), materialDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(m_device.GetHandle(), nodeDescriptorSetLayout, nullptr);
     vkDestroyPipeline(m_device.GetHandle(), graphicsPipeline, nullptr);
     vkDestroyPipeline(m_device.GetHandle(), wireGraphicsPipeline, nullptr);
     vkDestroyPipelineLayout(m_device.GetHandle(), pipelineLayout, nullptr);
@@ -211,15 +212,15 @@ void App::InitVulkan(void)
 
 #pragma region descriptor pool
     std::vector<VkDescriptorPoolSize> pools {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
     };
 
     for (auto& p : pools) {
         p.descriptorCount *= MAX_FRAME;
     }
 
-    uint32_t maxSets = 1 * MAX_FRAME;
+    uint32_t maxSets = 1000 * MAX_FRAME;
 
     m_descriptorPool.Init(m_device.GetHandle(), 0, maxSets, pools);
 #pragma endregion
@@ -304,23 +305,23 @@ void App::InitPipeline(void)
 #pragma endregion
 
 #pragma region descriptor set layout
-    VkDescriptorSetLayoutBinding binding0 { // model
+    VkDescriptorSetLayoutBinding binding0 { // base color, metallic, roughness factor
         .binding { 0 },
         .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
         .descriptorCount { 1 },
-        .stageFlags { VK_SHADER_STAGE_VERTEX_BIT },
+        .stageFlags { VK_SHADER_STAGE_FRAGMENT_BIT },
         .pImmutableSamplers { nullptr }
     };
 
-    VkDescriptorSetLayoutBinding binding1 { // global
+    VkDescriptorSetLayoutBinding binding1 { // base color texture
         .binding { 1 },
-        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .descriptorType { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
         .descriptorCount { 1 },
-        .stageFlags { VK_SHADER_STAGE_VERTEX_BIT },
+        .stageFlags { VK_SHADER_STAGE_FRAGMENT_BIT },
         .pImmutableSamplers { nullptr }
     };
 
-    VkDescriptorSetLayoutBinding binding2 { //
+    VkDescriptorSetLayoutBinding binding2 { // metallic roughness texture
         .binding { 2 },
         .descriptorType { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
         .descriptorCount { 1 },
@@ -338,8 +339,35 @@ void App::InitPipeline(void)
         .pBindings { bindings.data() }
     };
 
-    CHECK_VK(vkCreateDescriptorSetLayout(m_device.GetHandle(), &layoutInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout.");
+    CHECK_VK(vkCreateDescriptorSetLayout(m_device.GetHandle(), &layoutInfo, nullptr, &materialDescriptorSetLayout), "Failed to create descriptor set layout.");
 
+    VkDescriptorSetLayoutBinding set1binding0 {
+        .binding { 0 },
+        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .descriptorCount { 1 },
+        .stageFlags { VK_SHADER_STAGE_VERTEX_BIT },
+        .pImmutableSamplers { nullptr }
+    };
+
+    VkDescriptorSetLayoutBinding set1binding1 { // base color texture
+        .binding { 1 },
+        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+        .descriptorCount { 1 },
+        .stageFlags { VK_SHADER_STAGE_VERTEX_BIT },
+        .pImmutableSamplers { nullptr }
+    };
+
+    std::vector<VkDescriptorSetLayoutBinding> set1bindings { set1binding0, set1binding1 };
+
+    VkDescriptorSetLayoutCreateInfo set1layoutInfo {
+        .sType { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO },
+        .pNext { nullptr },
+        .flags {},
+        .bindingCount { static_cast<uint32_t>(set1bindings.size()) },
+        .pBindings { set1bindings.data() }
+    };
+
+    CHECK_VK(vkCreateDescriptorSetLayout(m_device.GetHandle(), &set1layoutInfo, nullptr, &nodeDescriptorSetLayout), "Failed to create descriptor set layout.");
 #pragma endregion
 
 #pragma region pipeline
@@ -522,7 +550,7 @@ void App::InitPipeline(void)
         .blendConstants { 0.0f, 0.0f, 0.0f, 0.0f }
     };
 
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts { descriptorSetLayout };
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts { materialDescriptorSetLayout, nodeDescriptorSetLayout };
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {
         .sType { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
@@ -626,29 +654,56 @@ void App::InitGui(void)
 void App::InitModel(void)
 {
 #pragma region model
-    m_model = new Model { &m_memoryAllocator, &m_transientCommandPool, &m_graphicsQueue };
-    m_model->LoadFile("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf");
+    m_asset = new glTF::Asset { &m_memoryAllocator, &m_transientCommandPool, &m_graphicsQueue };
+    m_asset->LoadAsset("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf");
 #pragma endregion
 
-#pragma region descriptor set
-    // for (auto& mesh : m_model->m_meshes) {
-    //     mesh.m_uniformData.diffuseImageView = mesh.m_uniformData.diffuseImage.CreateView(m_device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-    //     mesh.m_descriptorSet = m_descriptorPool.AllocateDescriptorSet(&descriptorSetLayout);
+    std::cout << "scene :" << m_asset->scenes.size() << '\n';
+    std::cout << "node :" << m_asset->nodes.size() << '\n';
+    std::cout << "mesh :" << m_asset->meshes.size() << '\n';
+    std::cout << "texture :" << m_asset->textures.size() << '\n';
+    std::cout << "material :" << m_asset->materials.size() << '\n';
 
-    //    mesh.m_descriptorSet.WriteBuffer(0, { mesh.m_uniformBuffer.GetHandle(), 0, sizeof(MeshUniformData) });
-    //    mesh.m_descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
-    //    mesh.m_descriptorSet.WriteImage(2, { textureSampler, mesh.m_uniformData.diffuseImageView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
-    //}
+#pragma region create image view and update descriptor set
+    for (auto& node : m_asset->nodes) {
+        node.descriptorSet = m_descriptorPool.AllocateDescriptorSet(&nodeDescriptorSetLayout);
+        node.descriptorSet.WriteBuffer(0, { node.uniformBuffer.GetHandle(), 0, sizeof(glm::mat4) });
+        node.descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
+    }
+
+    for (auto& texture : m_asset->textures) {
+        texture.textureView = texture.texture.CreateView(m_device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    }
+
+    m_asset->defaultTextureView = m_asset->defaultTexture.CreateView(m_device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    for (auto& material : m_asset->materials) {
+        material.descriptorSet = m_descriptorPool.AllocateDescriptorSet(&materialDescriptorSetLayout);
+
+        material.descriptorSet.WriteBuffer(0, { material.uniformBuffer.GetHandle(), 0, sizeof(glm::vec4) * 2 });
+
+        if (material.baseColorTextureIndex.has_value()) {
+            material.descriptorSet.WriteImage(1, { textureSampler, m_asset->textures[material.baseColorTextureIndex.value()].textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        } else {
+            material.descriptorSet.WriteImage(1, { textureSampler, m_asset->defaultTextureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        }
+
+        if (material.metallicRoughnessTextureIndex.has_value()) {
+            material.descriptorSet.WriteImage(2, { textureSampler, m_asset->textures[material.metallicRoughnessTextureIndex.value()].textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        } else {
+            material.descriptorSet.WriteImage(2, { textureSampler, m_asset->defaultTextureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        }
+    }
 #pragma endregion
 
 #pragma region camera
     glm::vec3 pos { 0.0f, 0.0f, -2.0f };
     glm::vec3 front { 0.0f, 0.0f, 1.0f };
     glm::vec3 up { 0.0f, 1.0f, 0.0f };
-    float fov = 60.0f;
+    float fov = 30.0f;
     float aspect = static_cast<float>(m_swapchain.GetImageExtent2D().width) / m_swapchain.GetImageExtent2D().height;
     float nearZ = 0.1f;
-    float farZ = 50.0f;
+    float farZ = 500.0f;
 
     m_camera.Init(pos, front, up, fov, aspect, nearZ, farZ);
 #pragma endregion
@@ -698,7 +753,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    m_model->Render(commandBuffer, pipelineLayout);
+    m_asset->Render(commandBuffer, pipelineLayout);
     p_gui->Render(commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);

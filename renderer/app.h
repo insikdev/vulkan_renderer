@@ -1,6 +1,8 @@
 #pragma once
 
-class Model;
+namespace glTF {
+class Asset;
+}
 class GUI;
 
 class App {
@@ -49,7 +51,8 @@ private: // vulkan object
     VK::DescriptorPool m_descriptorPool;
     VK::DescriptorPool m_guiDescriptorPool;
     VkRenderPass renderPass { VK_NULL_HANDLE };
-    VkDescriptorSetLayout descriptorSetLayout { VK_NULL_HANDLE };
+    VkDescriptorSetLayout materialDescriptorSetLayout { VK_NULL_HANDLE };
+    VkDescriptorSetLayout nodeDescriptorSetLayout { VK_NULL_HANDLE };
     VkPipelineLayout pipelineLayout { VK_NULL_HANDLE };
     VkPipeline graphicsPipeline { VK_NULL_HANDLE };
     VkPipeline wireGraphicsPipeline { VK_NULL_HANDLE };
@@ -63,7 +66,7 @@ private:
     static const uint32_t MAX_FRAME = 2;
     FrameData m_frameData[MAX_FRAME];
     uint32_t m_currentFrame {};
-    Model* m_model;
+    glTF::Asset* m_asset;
     VkSampler textureSampler { VK_NULL_HANDLE };
 
 private: // frame buffer
