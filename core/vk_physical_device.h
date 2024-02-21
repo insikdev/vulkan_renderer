@@ -5,14 +5,6 @@
 namespace VK {
 class PhysicalDevice {
 public:
-    // PhysicalDevice() = default;
-    //~PhysicalDevice() = default;
-    // PhysicalDevice(const PhysicalDevice&) = delete;
-    // PhysicalDevice(PhysicalDevice&&) = default;
-    // PhysicalDevice& operator=(const PhysicalDevice&) = delete;
-    // PhysicalDevice& operator=(PhysicalDevice&&) = default;
-
-public:
     void Init(VkPhysicalDevice physicalDevice);
 
 public:

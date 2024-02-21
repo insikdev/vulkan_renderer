@@ -18,11 +18,15 @@ public:
 
 public:
     VkSwapchainKHR GetHandle(void) const { return m_handle; }
+    VkFormat GetImageFormat(void) const { return m_imageFormat; }
+    VkExtent2D GetImageExtent2D(void) const { return m_imageExtent; }
     std::vector<VkImage> GetPresentableImages(void) const;
     VkResult AcquireNextImageIndex(uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex) const;
 
 private:
     VkDevice m_device { VK_NULL_HANDLE };
     VkSwapchainKHR m_handle { VK_NULL_HANDLE };
+    VkFormat m_imageFormat {};
+    VkExtent2D m_imageExtent {};
 };
 }

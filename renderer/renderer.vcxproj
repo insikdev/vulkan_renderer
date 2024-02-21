@@ -146,6 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
+    <ClCompile Include="glTF_primitive.cpp" />
     <ClCompile Include="gui.cpp" />
     <ClCompile Include="image.cpp" />
     <ClCompile Include="main.cpp" />
@@ -170,6 +171,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
+    <ClInclude Include="glTF_primitive.h" />
     <ClInclude Include="gui.h" />
     <ClInclude Include="image.h" />
     <ClInclude Include="mesh.h" />

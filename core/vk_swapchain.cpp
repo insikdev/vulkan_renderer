@@ -6,6 +6,8 @@ VkResult VK::Swapchain::Init(VkDevice device, VkSurfaceKHR surface, uint32_t min
 
     {
         m_device = device;
+        m_imageFormat = imageFormat;
+        m_imageExtent = imageExtent;
     }
 
     VkSwapchainCreateInfoKHR createInfo {
@@ -14,14 +16,14 @@ VkResult VK::Swapchain::Init(VkDevice device, VkSurfaceKHR surface, uint32_t min
         .flags {},
         .surface { surface },
         .minImageCount { minImageCount },
-        .imageFormat { imageFormat },
+        .imageFormat { m_imageFormat },
         .imageColorSpace { imageColorSpace },
-        .imageExtent { imageExtent },
+        .imageExtent { m_imageExtent },
         .imageArrayLayers { 1 },
         .imageUsage { VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT },
         .imageSharingMode { VK_SHARING_MODE_EXCLUSIVE },
-        .queueFamilyIndexCount { /* only VK_SHARING_MODE_CONCURRENT */ },
-        .pQueueFamilyIndices { /* only VK_SHARING_MODE_CONCURRENT */ },
+        .queueFamilyIndexCount {},
+        .pQueueFamilyIndices {},
         .preTransform { preTransform },
         .compositeAlpha { VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR },
         .presentMode { presentMode },

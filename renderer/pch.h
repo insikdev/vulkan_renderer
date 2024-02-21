@@ -21,8 +21,10 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED
+#define GLM_FORCE_QUAT_DATA_XYZW
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -40,6 +42,8 @@ struct Vertex {
 
 struct MeshUniformData {
     glm::mat4 world;
+    VK::Image diffuseImage;
+    VK::ImageView diffuseImageView;
 };
 
 struct GlobalUniformData {

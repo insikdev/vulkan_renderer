@@ -169,9 +169,11 @@ void App::InitVulkan(void)
 
 #pragma region swap chain
     VkSurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.GetSurfaceCapabilities(m_surface.GetHandle());
-    m_swapchainImageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-    m_swapchainImageExtent = surfaceCapabilities.currentExtent;
+
+    VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    VkExtent2D imageExtent = surfaceCapabilities.currentExtent;
     VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
@@ -180,7 +182,7 @@ void App::InitVulkan(void)
         imageCount = surfaceCapabilities.maxImageCount;
     }
 
-    CHECK_VK(m_swapchain.Init(m_device.GetHandle(), m_surface.GetHandle(), imageCount, m_swapchainImageFormat, colorSpace, m_swapchainImageExtent, surfaceCapabilities.currentTransform, presentMode), "Failed to create swap chain.");
+    CHECK_VK(m_swapchain.Init(m_device.GetHandle(), m_surface.GetHandle(), imageCount, imageFormat, colorSpace, imageExtent, surfaceCapabilities.currentTransform, presentMode), "Failed to create swap chain.");
 #pragma endregion
 
 #pragma region memory allocator
@@ -245,7 +247,7 @@ void App::InitPipeline(void)
 
     VkAttachmentDescription colorAttachment {
         .flags {},
-        .format { m_swapchainImageFormat },
+        .format { m_swapchain.GetImageFormat() },
         .samples { VK_SAMPLE_COUNT_1_BIT },
         .loadOp { VK_ATTACHMENT_LOAD_OP_CLEAR },
         .storeOp { VK_ATTACHMENT_STORE_OP_STORE },
@@ -434,15 +436,15 @@ void App::InitPipeline(void)
     VkViewport viewport {
         .x { 0.0f },
         .y { 0.0f },
-        .width { static_cast<float>(m_swapchainImageExtent.width) },
-        .height { static_cast<float>(m_swapchainImageExtent.height) },
+        .width { static_cast<float>(m_swapchain.GetImageExtent2D().width) },
+        .height { static_cast<float>(m_swapchain.GetImageExtent2D().height) },
         .minDepth { 0.0f },
         .maxDepth { 1.0f }
     };
 
     VkRect2D scissor {
         .offset { 0, 0 },
-        .extent { m_swapchainImageExtent }
+        .extent { m_swapchain.GetImageExtent2D() }
     };
 
     VkPipelineViewportStateCreateInfo viewportStateCreateInfo {
@@ -580,7 +582,7 @@ void App::InitFrameBuffer(void)
 
 #pragma region detph attachment
     VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
-    VkExtent3D extent3D = { m_swapchainImageExtent.width, m_swapchainImageExtent.height, 1 };
+    VkExtent3D extent3D = { m_swapchain.GetImageExtent2D().width, m_swapchain.GetImageExtent2D().height, 1 };
     depthImage = m_memoryAllocator.CreateImage(extent3D, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     depthImageView = depthImage.CreateView(m_device.GetHandle(), depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 #pragma endregion
@@ -590,7 +592,7 @@ void App::InitFrameBuffer(void)
 
     for (size_t i = 0; i < images.size(); i++) {
         std::vector<VkImageView> attachments { m_colorImages[i].GetHandle(), depthImageView.GetHandle() };
-        m_frameBuffers[i].Init(m_device.GetHandle(), renderPass, attachments, m_swapchainImageExtent.width, m_swapchainImageExtent.height);
+        m_frameBuffers[i].Init(m_device.GetHandle(), renderPass, attachments, m_swapchain.GetImageExtent2D().width, m_swapchain.GetImageExtent2D().height);
     }
 #pragma endregion
 }
@@ -624,18 +626,19 @@ void App::InitGui(void)
 void App::InitModel(void)
 {
 #pragma region model
-    m_model = new Model {};
-    m_model->Init("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf", m_device, m_memoryAllocator, m_transientCommandPool, m_graphicsQueue);
+    m_model = new Model { &m_memoryAllocator, &m_transientCommandPool, &m_graphicsQueue };
+    m_model->LoadFile("C:/assets/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf");
 #pragma endregion
 
 #pragma region descriptor set
-    for (auto& mesh : m_model->m_meshes) {
-        mesh.m_descriptorSet = m_descriptorPool.AllocateDescriptorSet(&descriptorSetLayout);
+    // for (auto& mesh : m_model->m_meshes) {
+    //     mesh.m_uniformData.diffuseImageView = mesh.m_uniformData.diffuseImage.CreateView(m_device.GetHandle(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    //     mesh.m_descriptorSet = m_descriptorPool.AllocateDescriptorSet(&descriptorSetLayout);
 
-        mesh.m_descriptorSet.WriteBuffer(0, { mesh.m_uniformBuffer.GetHandle(), 0, sizeof(MeshUniformData) });
-        mesh.m_descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
-        mesh.m_descriptorSet.WriteImage(2, { textureSampler, mesh.textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
-    }
+    //    mesh.m_descriptorSet.WriteBuffer(0, { mesh.m_uniformBuffer.GetHandle(), 0, sizeof(MeshUniformData) });
+    //    mesh.m_descriptorSet.WriteBuffer(1, { m_frameData[0].globalUBO.GetHandle(), 0, sizeof(GlobalUniformData) });
+    //    mesh.m_descriptorSet.WriteImage(2, { textureSampler, mesh.m_uniformData.diffuseImageView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    //}
 #pragma endregion
 
 #pragma region camera
@@ -643,7 +646,7 @@ void App::InitModel(void)
     glm::vec3 front { 0.0f, 0.0f, 1.0f };
     glm::vec3 up { 0.0f, 1.0f, 0.0f };
     float fov = 60.0f;
-    float aspect = static_cast<float>(m_swapchainImageExtent.width) / m_swapchainImageExtent.height;
+    float aspect = static_cast<float>(m_swapchain.GetImageExtent2D().width) / m_swapchain.GetImageExtent2D().height;
     float nearZ = 0.1f;
     float farZ = 50.0f;
 
@@ -655,7 +658,7 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
 {
     VkRect2D renderArea {
         .offset { 0, 0 },
-        .extent { m_swapchainImageExtent }
+        .extent { m_swapchain.GetImageExtent2D() }
     };
 
     std::vector<VkClearValue> clearValues { { { 0.0f, 0.0f, 0.0f, 1.0f } }, { 1.0f, 0.0f } };
@@ -681,15 +684,15 @@ void App::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex
     VkViewport viewport {
         .x { 0.0f },
         .y { 0.0f },
-        .width { static_cast<float>(m_swapchainImageExtent.width) },
-        .height { static_cast<float>(m_swapchainImageExtent.height) },
+        .width { static_cast<float>(m_swapchain.GetImageExtent2D().width) },
+        .height { static_cast<float>(m_swapchain.GetImageExtent2D().height) },
         .minDepth { 0.0f },
         .maxDepth { 1.0f }
     };
 
     VkRect2D scissor {
         .offset { 0, 0 },
-        .extent { m_swapchainImageExtent }
+        .extent { m_swapchain.GetImageExtent2D() }
     };
 
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);

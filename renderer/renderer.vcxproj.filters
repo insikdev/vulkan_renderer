@@ -6,22 +6,35 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="mesh.cpp" />
-    <ClCompile Include="model.cpp" />
     <ClCompile Include="gui.cpp" />
     <ClCompile Include="image.cpp" />
+    <ClCompile Include="glTF_primitive.cpp">
+      <Filter>glTF</Filter>
+    </ClCompile>
+    <ClCompile Include="model.cpp">
+      <Filter>glTF</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="mesh.h" />
-    <ClInclude Include="model.h" />
     <ClInclude Include="gui.h" />
     <ClInclude Include="image.h" />
+    <ClInclude Include="glTF_primitive.h">
+      <Filter>glTF</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>glTF</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="shaders">
       <UniqueIdentifier>{6da7a6a7-0f88-4125-8aaf-8c725ec45ad3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="glTF">
+      <UniqueIdentifier>{2b49d0f1-2ef2-4d23-8dd3-c2eca32b9dfb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

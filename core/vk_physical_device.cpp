@@ -59,6 +59,8 @@ VkSurfaceCapabilitiesKHR VK::PhysicalDevice::GetSurfaceCapabilities(VkSurfaceKHR
 
 std::vector<VkSurfaceFormatKHR> VK::PhysicalDevice::GetSurfaceFormats(VkSurfaceKHR surface) const
 {
+    assert(m_handle != VK_NULL_HANDLE);
+
     uint32_t count {};
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_handle, surface, &count, nullptr);
 
@@ -73,6 +75,8 @@ std::vector<VkSurfaceFormatKHR> VK::PhysicalDevice::GetSurfaceFormats(VkSurfaceK
 
 VkFormatProperties VK::PhysicalDevice::GetFormatProperties(VkFormat format) const
 {
+    assert(m_handle != VK_NULL_HANDLE);
+
     VkFormatProperties properties;
     vkGetPhysicalDeviceFormatProperties(m_handle, format, &properties);
 

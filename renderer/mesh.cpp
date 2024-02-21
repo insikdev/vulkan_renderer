@@ -47,16 +47,16 @@ void Mesh::Init(const VK::MemoryAllocator& memoryAllocator, const VK::CommandBuf
 
     VkExtent3D extent3D = { static_cast<uint32_t>(image.GetWidth()), static_cast<uint32_t>(image.GetHeight()), 1 };
 
-    texture = memoryAllocator.CreateImage(extent3D, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    m_uniformData.diffuseImage = memoryAllocator.CreateImage(extent3D, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-    texture.TransitionLayout(commandBuffer,
+    m_uniformData.diffuseImage.TransitionLayout(commandBuffer,
         VK_ACCESS_NONE, VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-    stagingBuffer.CopyToImage(commandBuffer, texture.GetHandle(), extent3D);
+    stagingBuffer.CopyToImage(commandBuffer, m_uniformData.diffuseImage.GetHandle(), extent3D);
 
-    texture.TransitionLayout(commandBuffer,
+    m_uniformData.diffuseImage.TransitionLayout(commandBuffer,
         VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -78,13 +78,7 @@ void Mesh::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout)
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
     vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer.GetHandle(), 0, VK_INDEX_TYPE_UINT32);
 
-    static float angle = 0.0f;
-    glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 0.0f, 1.0f));
-    angle += 0.01f;
-
-    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f));
-
-    m_uniformData.world = rotate * scale;
+    m_uniformData.world = transform.GetWorldMatrix();
     m_uniformBuffer.CopyData(&m_uniformData, sizeof(MeshUniformData));
 
     VkDescriptorSet descriptorSets[] = { m_descriptorSet.GetHandle() };

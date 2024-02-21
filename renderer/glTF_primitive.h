@@ -1,14 +1,17 @@
 #pragma once
 
-class Mesh {
+namespace glTF {
+class Primitive {
 public:
-    void Init(
-        const VK::MemoryAllocator& memoryAllocator,
+    Primitive() = default;
+    Primitive(Primitive&&) noexcept = default;
+
+public:
+    void Init(const VK::MemoryAllocator& memoryAllocator,
         const VK::CommandBuffer& commandBuffer,
         const VK::Queue& queue,
         const std::vector<Vertex>& vertices,
-        const std::vector<uint32_t>& indices,
-        const std::string& texturePath);
+        const std::vector<uint32_t>& indices);
 
 public:
     void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
@@ -20,5 +23,5 @@ public:
     VK::DescriptorSet m_descriptorSet;
     MeshUniformData m_uniformData {};
     uint32_t m_indexCount {};
-    Graphics::Transform transform;
 };
+}

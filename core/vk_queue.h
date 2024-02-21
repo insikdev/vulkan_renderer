@@ -5,14 +5,6 @@
 namespace VK {
 class Queue {
 public:
-    Queue() = default;
-    ~Queue() = default;
-    Queue(const Queue&) = delete;
-    Queue(Queue&&) noexcept;
-    Queue& operator=(const Queue&) = delete;
-    Queue& operator=(Queue&&) noexcept;
-
-public:
     void Init(VkDevice device, uint32_t queueFamilyIndex, uint32_t queueIndex);
 
 public:

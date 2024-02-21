@@ -55,11 +55,6 @@ private: // vulkan object
     VkPipeline wireGraphicsPipeline { VK_NULL_HANDLE };
 
 private:
-    // std::optional<uint32_t> m_graphicsQueueFamilyIndex { std::nullopt };
-    VkFormat m_swapchainImageFormat;
-    VkExtent2D m_swapchainImageExtent;
-
-private:
     GUI* p_gui;
     GuiOptions guiOptions {};
     Graphics::Camera m_camera;
